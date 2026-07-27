@@ -9,7 +9,6 @@ module EnlistmentsHelper
     [
       ["7pm EST (Midnight GMT)", "est"],
       ["2pm EST (7pm GMT)", "gmt"],
-      ["Any", "any_timezone"]
     ]
   end
 
