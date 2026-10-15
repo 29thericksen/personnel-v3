@@ -10,7 +10,7 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.0].define(version: 2026_07_17_201329) do
+ActiveRecord::Schema[8.0].define(version: 2026_10_15_120000) do
   create_table "__att1", id: { type: :integer, limit: 3, comment: "Attendance log ID", unsigned: true }, charset: "utf8mb3", comment: "Log of attendance", force: :cascade do |t|
     t.integer "event_id", limit: 3, null: false, comment: "Event ID", unsigned: true
     t.integer "member_id", limit: 3, null: false, comment: "Member ID", unsigned: true
@@ -232,6 +232,15 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_17_201329) do
     t.index ["member_id"], name: "Member ID"
     t.index ["recruiter_member_id"], name: "Recruiter"
     t.index ["unit_id"], name: "Unit ID"
+  end
+
+  create_table "event_guests", charset: "utf8mb3", force: :cascade do |t|
+    t.integer "event_id", limit: 3, null: false, unsigned: true
+    t.integer "member_id", limit: 3, null: false, unsigned: true
+    t.datetime "created_at", null: false
+    t.datetime "updated_at", null: false
+    t.index ["event_id", "member_id"], name: "index_event_guests_on_event_id_and_member_id", unique: true
+    t.index ["member_id"], name: "index_event_guests_on_member_id"
   end
 
   create_table "events", id: { type: :integer, limit: 3, unsigned: true }, charset: "utf8mb3", force: :cascade do |t|
@@ -511,6 +520,8 @@ ActiveRecord::Schema[8.0].define(version: 2026_07_17_201329) do
   add_foreign_key "enlistments", "members", column: "recruiter_member_id", name: "enlistments_ibfk_7", on_update: :cascade
   add_foreign_key "enlistments", "members", name: "enlistments_ibfk_1", on_update: :cascade
   add_foreign_key "enlistments", "units", name: "enlistments_ibfk_5", on_update: :cascade
+  add_foreign_key "event_guests", "events", on_update: :cascade, on_delete: :cascade
+  add_foreign_key "event_guests", "members", on_update: :cascade
   add_foreign_key "events", "members", column: "reporter_member_id", name: "events_ibfk_5", on_update: :cascade
   add_foreign_key "events", "servers", name: "events_ibfk_4", on_update: :cascade
   add_foreign_key "events", "units", name: "events_ibfk_3", on_update: :cascade

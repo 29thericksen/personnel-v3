@@ -7,6 +7,18 @@ module EventsHelper
     simple_format(sanitizer.sanitize(html))
   end
 
+  # Where a guest is from: their current unit(s), or Retired / Discharged.
+  # Expects active_assignments (with unit) and discharges to be preloaded.
+  def guest_status_detail(user)
+    if user.active_assignments.any?
+      user.active_assignments.map { |assignment| assignment.unit.abbr }.uniq.join(", ")
+    elsif (discharge = user.discharges.max_by(&:date))
+      discharge.honorable? ? "Retired" : "Discharged"
+    else
+      "Inactive"
+    end
+  end
+
   def calendar_wrapper(options = {}, &block)
     if options[:view_by] == "month"
       month_calendar(options, &block)

@@ -309,4 +309,61 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
       put loa_event_url(event)
     end
   end
+
+  test "aar should save guests, skipping anyone expected at the event" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    guest = create(:user)
+
+    params = {event: {user_ids: [""], guest_ids: ["", guest.id.to_s, @user.id.to_s]}}
+    assert_difference("EventGuest.count", 1) do
+      patch aar_event_url(event), params: params
+    end
+    assert_equal [guest.id], event.guests.map(&:id)
+
+    get event_url(event)
+    assert_select ".guests li", {count: 1, text: /#{guest.short_name}/}
+  end
+
+  test "aar should remove guests when all are cleared" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    create(:event_guest, event: event)
+
+    params = {event: {user_ids: [""], guest_ids: [""]}}
+    assert_difference("EventGuest.count", -1) do
+      patch aar_event_url(event), params: params
+    end
+  end
+
+  test "aar without guest_ids should leave guests alone" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    create(:event_guest, event: event)
+
+    assert_no_difference("EventGuest.count") do
+      patch aar_event_url(event), params: {event: {user_ids: [""]}}
+    end
+  end
+
+  test "guest search should return matching members as json" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    guest = create(:user, first_name: "Test", last_name: "Galloway")
+    create(:assignment, user: guest, unit: create(:unit, abbr: "Bn. HQ"))
+
+    get aar_guests_event_url(event), params: {q: "gall"}, as: :json
+
+    assert_response :success
+    assert_equal [{"id" => guest.id, "name" => guest.short_name, "detail" => "Bn. HQ"}], response.parsed_body
+  end
+
+  test "guest search should require aar permission on the event" do
+    sign_in_as @user
+    other_unit_event = create(:event, unit: create(:unit))
+
+    get aar_guests_event_url(other_unit_event), params: {q: "gall"}, as: :json
+
+    assert_redirected_to root_url
+  end
 end

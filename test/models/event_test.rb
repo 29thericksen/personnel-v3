@@ -74,6 +74,65 @@ class EventTest < ActiveSupport::TestCase
     assert_equal 3, expected_users.size
   end
 
+  test "update_guests adds and removes guests" do
+    event = create(:event)
+    kept, removed, added = create_list(:user, 3)
+    create(:event_guest, event: event, user: kept)
+    create(:event_guest, event: event, user: removed)
+
+    event.update_guests(["", kept.id.to_s, added.id.to_s])
+
+    assert_equal [kept, added].map(&:id).sort, event.guests.reload.map(&:id).sort
+  end
+
+  test "update_guests ignores expected users, unknown ids and duplicates" do
+    unit = create(:unit)
+    event = create(:event, unit: unit)
+    expected_user = create(:assignment, unit: unit).user
+    guest = create(:user)
+
+    event.update_guests([expected_user.id, guest.id, guest.id, User.maximum(:id) + 1000].map(&:to_s))
+
+    assert_equal [guest.id], event.guests.reload.map(&:id)
+  end
+
+  test "update_guests audits additions and removals" do
+    event = create(:event)
+    removed, added = create_list(:user, 2)
+    create(:event_guest, event: event, user: removed)
+
+    guest_audits = Audited::Audit.where(auditable_type: "EventGuest", associated: event)
+    assert_difference(-> { guest_audits.where(action: "destroy").count } => 1,
+      -> { guest_audits.where(action: "create").count } => 1) do
+      event.update_guests([added.id.to_s])
+    end
+  end
+
+  test "guest_candidates finds current and former members outside the event" do
+    unit = create(:unit)
+    event = create(:event, unit: unit)
+    expected_user = create(:user, first_name: "Test", last_name: "Harding")
+    create(:assignment, user: expected_user, unit: unit)
+    current_member = create(:user, first_name: "Test", last_name: "Harlan")
+    create(:assignment, user: current_member)
+    former_member = create(:user, first_name: "Test", last_name: "Harper")
+    create(:assignment, user: former_member, start_date: 1.year.ago, end_date: 1.month.ago)
+    create(:user, first_name: "Test", last_name: "Harris") # never assigned, e.g. an applicant
+    create(:assignment, user: create(:user, first_name: "Test", last_name: "Smith"))
+
+    results = event.guest_candidates("har")
+
+    assert_equal [current_member, former_member].map(&:id).sort, results.map(&:id).sort
+  end
+
+  test "guest_candidates needs at least two characters" do
+    event = create(:event)
+    create(:assignment, user: create(:user, last_name: "Harlan"))
+
+    assert_empty event.guest_candidates("h")
+    assert_empty event.guest_candidates(nil)
+  end
+
   class AttendanceTotalsTest < EventTest
     test "calculates attendance totals" do
       event = create_attended_event(1.week.ago, attended: 6, absent: 4)

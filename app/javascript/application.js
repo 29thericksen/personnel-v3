@@ -10,9 +10,11 @@ application.debug = false
 window.Stimulus = application
 
 import NestedForm from 'stimulus-rails-nested-form'
+import GuestPicker from './controllers/guest_picker_controller'
 import RealismExperience from './controllers/realism_experience_controller'
 import TimeZoneGuesser from './controllers/time_zone_guesser_controller'
 
+application.register('guest-picker', GuestPicker)
 application.register('nested-form', NestedForm)
 application.register('realism-experience', RealismExperience)
 application.register('time-zone-guesser', TimeZoneGuesser)

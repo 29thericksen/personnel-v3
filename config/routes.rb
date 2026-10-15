@@ -77,6 +77,7 @@ Rails.application.routes.draw do
     member do
       get "aar", to: "events#edit_aar"
       patch "aar", to: "events#update_aar"
+      get "aar/guests", to: "events#guest_search", as: :aar_guests
       put "loa", to: "events#loa"
     end
   end

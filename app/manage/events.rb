@@ -88,6 +88,9 @@ ActiveAdmin.register Event do
       row :report do |event|
         safe_bbcode(event.report).html_safe if event.report.present?
       end
+      row :guests do |event|
+        safe_join(event.guests.map { |guest| link_to guest, manage_user_path(guest) }, ", ")
+      end
     end
   end
 

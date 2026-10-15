@@ -1,0 +1,30 @@
+<div class="form-group guest-picker" data-controller="guest-picker"
+     data-guest-picker-url-value="<%= aar_guests_event_path(event) %>">
+  <label for="guest-search">Guests</label>
+  <%# Always sent, so clearing every guest still submits the field %>
+  <%= hidden_field_tag "event[guest_ids][]", "", id: nil %>
+  <div class="guest-picker-chips" data-guest-picker-target="chips">
+    <% guests.each do |guest| %>
+      <span class="badge badge-secondary guest-picker-chip" data-guest-id="<%= guest.id %>">
+        <span><%= guest.short_name %></span>
+        <small>(<%= guest_status_detail(guest) %>)</small>
+        <%= hidden_field_tag "event[guest_ids][]", guest.id, id: nil %>
+        <button type="button" class="close" aria-label="Remove <%= guest.short_name %>"
+                data-action="guest-picker#remove">×</button>
+      </span>
+    <% end %>
+  </div>
+  <div class="guest-picker-search">
+    <input type="text" id="guest-search" class="form-control" autocomplete="off"
+           placeholder="Search members by name" role="combobox" aria-expanded="false"
+           aria-controls="guest-search-results"
+           data-guest-picker-target="input"
+           data-action="input->guest-picker#search keydown->guest-picker#navigate">
+    <div class="dropdown-menu guest-picker-menu" id="guest-search-results" role="listbox"
+         data-guest-picker-target="menu"></div>
+  </div>
+  <small class="form-text text-muted">
+    Members from outside this unit who attended, including former members.
+    Guests don't affect anyone's attendance record.
+  </small>
+</div>

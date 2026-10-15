@@ -307,4 +307,9 @@ FactoryBot.define do
     time_zone { "Eastern Time (US & Canada)" }
     server
   end
+
+  factory :event_guest do
+    event
+    user
+  end
 end

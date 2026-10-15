@@ -20,6 +20,7 @@ class EventsController < ApplicationController
     @attendance_records = @event.attendance_records
       .without_cancelled_loas # TODO: remove this after v2 calendar is disabled
       .includes(:event, user: :extended_loas)
+    @guests = guests_for(@event)
     authorize @event
   end
 
@@ -27,7 +28,19 @@ class EventsController < ApplicationController
     @event = Event.find(params[:id])
     @attended_user_ids = @event.attendance_records.where(attended: true).pluck(:member_id)
     @expected_users = @event.expected_users.order("ranks.order DESC", "last_name")
+    @guests = guests_for(@event)
     authorize @event, :aar?
+  end
+
+  def guest_search
+    @event = Event.find(params[:id])
+    authorize @event, :aar?
+
+    candidates = @event.guest_candidates(params[:q]).map do |user|
+      {id: user.id, name: user.short_name, detail: helpers.guest_status_detail(user)}
+    end
+
+    render json: candidates
   end
 
   def update_aar
@@ -41,11 +54,18 @@ class EventsController < ApplicationController
     @event.update_attendance(attended_ids)
     @event.excuse_users_on_extended_loa
 
+    # Only touch guests when the form sent the field, so requests without it
+    # leave existing guests alone.
+    if params[:event].key?(:guest_ids)
+      @event.update_guests(Array(params[:event][:guest_ids]))
+    end
+
     if @event.save
       redirect_to @event, notice: "AAR was successfully updated."
     else
       @attended_user_ids = @event.attendance_records.where(attended: true).pluck(:member_id)
       @expected_users = @event.expected_users.order("ranks.order DESC", "last_name")
+      @guests = guests_for(@event)
       render :edit_aar
     end
   end
@@ -61,5 +81,11 @@ class EventsController < ApplicationController
     elsif @event.post_loa(current_user)
       redirect_to @event, notice: "LOA was successfully posted."
     end
+  end
+
+  private
+
+  def guests_for(event)
+    event.guests.preload(:discharges, active_assignments: :unit)
   end
 end

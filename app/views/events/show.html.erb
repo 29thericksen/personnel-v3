@@ -67,6 +67,18 @@
           <% end %>
         </ul>
       <% end%>
+
+      <% if @guests.any? %>
+        <h4>Guests</h4>
+        <ul class="guests">
+          <% @guests.each do |guest| %>
+            <li>
+              <%= link_to guest %>
+              <small class="text-muted"><%= guest_status_detail(guest) %></small>
+            </li>
+          <% end %>
+        </ul>
+      <% end %>
     </div>
     <div class="col-8 aar">
       <div class="card bg-dark">

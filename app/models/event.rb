@@ -11,6 +11,9 @@ class Event < ApplicationRecord
   end
   has_many :users, through: :attendance_records
   has_one :attendance_totals, -> { totals_by_event }, class_name: "AttendanceRecord"
+  has_many :event_guests, dependent: :destroy
+  has_many :guests, -> { includes(:rank).order("ranks.order DESC", "members.last_name") },
+    through: :event_guests, source: :user
 
   scope :for_user, ->(user) do
     for_unit(user.active_assignment_unit_path_ids)
@@ -110,6 +113,36 @@ class Event < ApplicationRecord
     else
       attendance_record.update(excused: false)
     end
+  end
+
+  GUEST_SEARCH_LIMIT = 10
+
+  # Replaces the guest list, ignoring unknown ids and anyone expected at the
+  # event. Adds and removes records one at a time so both are audited.
+  def update_guests(user_ids)
+    ids = user_ids.reject(&:blank?).map(&:to_i).uniq
+    wanted = User.where(id: ids).ids - expected_users.ids
+
+    event_guests.where.not(member_id: wanted).destroy_all
+    (wanted - event_guests.pluck(:member_id)).each do |member_id|
+      event_guests.create!(member_id: member_id)
+    end
+  end
+
+  # Members who could be added as guests: anyone who has ever held an
+  # assignment, active or not, except those expected at the event.
+  def guest_candidates(query)
+    term = query.to_s.strip
+    return User.none if term.length < 2
+
+    pattern = "#{User.sanitize_sql_like(term)}%"
+    User.where("members.last_name LIKE :q OR members.first_name LIKE :q", q: pattern)
+      .where(id: Assignment.select(:member_id))
+      .where.not(id: expected_users.ids)
+      .joins(:rank)
+      .preload(:rank, :discharges, active_assignments: :unit)
+      .order("ranks.order DESC", "members.last_name")
+      .limit(GUEST_SEARCH_LIMIT)
   end
 
   def starts_at_local
