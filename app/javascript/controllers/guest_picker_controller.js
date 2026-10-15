@@ -50,9 +50,6 @@ export default class extends Controller {
       case 'Escape':
         this._close()
         break
-      case 'Backspace':
-        if (this.inputTarget.value === '') this.chipsTarget.lastElementChild?.remove()
-        break
     }
   }
 

@@ -136,7 +136,7 @@ class Event < ApplicationRecord
     return User.none if term.length < 2
 
     pattern = "#{User.sanitize_sql_like(term)}%"
-    User.where("members.last_name LIKE :q OR members.first_name LIKE :q", q: pattern)
+    User.where("members.last_name LIKE ?", pattern)
       .where(id: Assignment.select(:member_id))
       .where.not(id: expected_users.ids)
       .joins(:rank)

@@ -118,7 +118,7 @@ class EventTest < ActiveSupport::TestCase
     former_member = create(:user, first_name: "Test", last_name: "Harper")
     create(:assignment, user: former_member, start_date: 1.year.ago, end_date: 1.month.ago)
     create(:user, first_name: "Test", last_name: "Harris") # never assigned, e.g. an applicant
-    create(:assignment, user: create(:user, first_name: "Test", last_name: "Smith"))
+    create(:assignment, user: create(:user, first_name: "Harold", last_name: "Smith")) # first name only
 
     results = event.guest_candidates("har")
 
