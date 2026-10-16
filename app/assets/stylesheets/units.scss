@@ -47,10 +47,14 @@
 
 .unit-guest-stats__card {
   margin-bottom: 1rem;
+  background-color: transparent;
 
   .list-group-item {
     display: flex;
     justify-content: space-between;
+    background-color: transparent;
+    color: inherit;
+    border-color: rgba(255, 255, 255, 0.125);
   }
 }
 
