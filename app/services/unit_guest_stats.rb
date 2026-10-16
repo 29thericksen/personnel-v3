@@ -58,7 +58,10 @@ class UnitGuestStats
 
   # Units in the subtree that held drills in the period, ranked by guests per drill
   def top_hosts
-    hosts.sort_by { |host| [-host.per_drill, -host.guests, host.unit.abbr] }.first(RANKING_SIZE)
+    hosts
+      .select { |host| host.guests.positive? }
+      .sort_by { |host| [-host.per_drill, -host.guests, host.unit.abbr] }
+      .first(RANKING_SIZE)
   end
 
   def bottom_hosts

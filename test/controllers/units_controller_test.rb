@@ -143,6 +143,20 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_match(/#{@member.short_name}\s+1/, top_guesters.text)
   end
 
+  test "guest stats leaves units without guests out of the top hosts" do
+    leader = create(:user)
+    create(:permission, abbr: "note_view_pl", unit: @company)
+    create(:assignment, user: leader, unit: @company)
+    create(:event, unit: @squad, starts_at: 5.days.ago)
+
+    sign_in_as leader
+    get unit_guests_url(@company, tab: "stats")
+
+    _top_guesters, _bottom_guesters, top_hosts, bottom_hosts = css_select(".unit-guest-stats__card")
+    assert_match "No guests in the last 90 days.", top_hosts.text
+    assert_match(/Able 1-1\s+0\.0/, bottom_hosts.text)
+  end
+
   test "awols groups recent awols by user" do
     event = create(:event, unit: @squad, mandatory: true, starts_at: 1.week.ago)
     create(:attendance_record, user: @member, event: event,
