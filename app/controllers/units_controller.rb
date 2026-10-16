@@ -20,12 +20,14 @@ class UnitsController < ApplicationController
   end
 
   # "ours" lists the unit's events with how many guests joined each;
-  # "elsewhere" counts the events the unit's members joined as guests.
-  # Guesting between sub-units counts in both.
-  GUEST_TABS = %w[ours elsewhere].freeze
+  # "elsewhere" counts the events the unit's members joined as guests;
+  # "stats" is the leaders' breakdown (UnitGuestStats).
+  # Guesting between sub-units counts in all of them.
+  GUEST_TABS = %w[ours elsewhere stats].freeze
 
   def guests
     @tab = GUEST_TABS.include?(params[:tab]) ? params[:tab] : "ours"
+    authorize @unit, :guest_stats? if @tab == "stats"
 
     hosted_guests = EventGuest.where(event: Event.for_unit(@unit.subtree)) # include inactive units
     member_guests = EventGuest.where(member_id: @unit.subtree_users.active.select(:id))
@@ -43,6 +45,10 @@ class UnitsController < ApplicationController
         .select(:id, :unit_id, :starts_at, :time_zone, :type)
         .page(params[:page])
       @guests_by_event = EventGuest.where(event_id: @events.map(&:id)).group(:event_id).count
+    elsif @tab == "stats"
+      period = params[:period].to_i
+      @period = UnitGuestStats::PERIODS.include?(period) ? period : UnitGuestStats::PERIODS.max
+      @guest_stats = UnitGuestStats.new(@unit, period: @period)
     else
       counts = member_guests.period_counts
         .select(:member_id)

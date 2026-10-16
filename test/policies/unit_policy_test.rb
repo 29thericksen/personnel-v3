@@ -20,6 +20,24 @@ class UnitPolicyTest < ActiveSupport::TestCase
     end
   end
 
+  test "guest_stats permits platoon HQ or higher on any unit" do
+    unit = create(:unit)
+
+    platoon_leader = create(:user)
+    platoon = create(:unit, abbr: "CP1 HQ")
+    create(:permission, abbr: "note_view_pl", unit: platoon)
+    create(:assignment, user: platoon_leader, unit: platoon)
+
+    squad_leader = create(:user)
+    squad = create(:unit, abbr: "CP1S1")
+    create(:permission, abbr: "note_view_sq", unit: squad)
+    create(:assignment, user: squad_leader, unit: squad)
+
+    assert_permit platoon_leader, unit, :guest_stats
+    refute_permit squad_leader, unit, :guest_stats
+    refute_permit nil, unit, :guest_stats
+  end
+
   test "missing_awards permits user with awarding_add on the unit or its subtree" do
     unit = create(:unit)
     child_unit = create(:unit, parent: unit)

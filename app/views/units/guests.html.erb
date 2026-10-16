@@ -2,34 +2,27 @@
 
 <h2>Guests</h2>
 
+<% tabs = {"ours" => "Guests at our drills", "elsewhere" => "Our members guesting elsewhere"}
+   tabs["stats"] = "Guest stats" if policy(@unit).guest_stats? %>
 <ul class="nav nav-tabs unit-guests-tabs">
-  <% {"ours" => "Guests at our drills", "elsewhere" => "Our members guesting elsewhere"}.each do |tab, label| %>
+  <% tabs.each do |tab, label| %>
     <li class="nav-item">
       <%= link_to unit_guests_path(@unit, tab: (tab unless tab == "ours")),
             class: class_names("nav-link", active: @tab == tab) do %>
         <%= label %>
-        <span class="badge badge-light"><%= @guest_counts[tab].total %></span>
+        <% if @guest_counts.key?(tab) %>
+          <span class="badge badge-light"><%= @guest_counts[tab].total %></span>
+        <% end %>
       <% end %>
     </li>
   <% end %>
 </ul>
 
-<% counts = @guest_counts[@tab] %>
-<dl class="user-attendance-stats">
-  <dt>Last 30 days:</dt>
-  <dd><%= counts.last_30_days %></dd>
+<% if @tab == "stats" %>
+  <%= render "guest_stats", stats: @guest_stats, period: @period %>
+<% elsif @tab == "ours" %>
+  <%= render "guest_counts", counts: @guest_counts[@tab] %>
 
-  <dt>Last 60 days:</dt>
-  <dd><%= counts.last_60_days %></dd>
-
-  <dt>Last 90 days:</dt>
-  <dd><%= counts.last_90_days %></dd>
-
-  <dt>Total:</dt>
-  <dd><%= counts.total %></dd>
-</dl>
-
-<% if @tab == "ours" %>
   <table class="table table-striped unit-guests">
     <thead>
       <tr>
@@ -54,6 +47,8 @@
 
   <%= paginate @events %>
 <% else %>
+  <%= render "guest_counts", counts: @guest_counts[@tab] %>
+
   <table class="table table-striped unit-guests">
     <thead>
       <tr>

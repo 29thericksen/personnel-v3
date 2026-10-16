@@ -1,0 +1,90 @@
+<h4 class="unit-guest-stats__heading">Members who guested, by unit</h4>
+
+<table class="table table-striped unit-guests">
+  <thead>
+    <tr>
+      <th scope="col">Unit</th>
+      <th class="unit-guests__count-col" scope="col">Members</th>
+      <% UnitGuestStats::PERIODS.each do |days| %>
+        <th class="unit-guests__count-col" scope="col">Last <%= days %> days</th>
+      <% end %>
+    </tr>
+  </thead>
+  <tbody>
+  <% stats.unit_rows.each do |row| %>
+    <tr>
+      <td><%= link_to row.unit.abbr, unit_guests_path(row.unit) %></td>
+      <td class="unit-guests__count-col"><%= row.members %></td>
+      <% row.guested.each_value do |count| %>
+        <td class="<%= class_names("unit-guests__count-col", "text-muted": count.zero?) %>"><%= count %></td>
+      <% end %>
+    </tr>
+  <% end %>
+  </tbody>
+  <tfoot>
+    <tr class="unit-guest-stats__total">
+      <th scope="row"><%= stats.unit.subtree_abbr %> total</th>
+      <td class="unit-guests__count-col"><%= stats.total_row.members %></td>
+      <% stats.total_row.guested.each_value do |count| %>
+        <td class="unit-guests__count-col"><%= count %></td>
+      <% end %>
+    </tr>
+  </tfoot>
+</table>
+
+<div class="unit-guest-stats__periods">
+  <span>Rankings over:</span>
+  <ul class="nav nav-pills">
+    <% UnitGuestStats::PERIODS.each do |days| %>
+      <li class="nav-item">
+        <%= link_to "#{days} days", unit_guests_path(stats.unit, tab: "stats", period: days),
+              class: class_names("nav-link", active: period == days) %>
+      </li>
+    <% end %>
+  </ul>
+</div>
+
+<div class="row">
+  <% [["Top guesters", stats.top_guesters], ["Bottom guesters", stats.bottom_guesters]].each do |title, guesters| %>
+    <div class="col-md-6">
+      <div class="card unit-guest-stats__card">
+        <div class="card-header"><%= title %></div>
+        <ul class="list-group list-group-flush">
+          <% guesters.each do |guester| %>
+            <li class="list-group-item">
+              <%= link_to guester.user, user_attendance_path(guester.user, filter: "guested") %>
+              <span class="<%= class_names("text-muted": guester.count.zero?) %>"><%= guester.count %></span>
+            </li>
+          <% end %>
+          <% if title == "Bottom guesters" && stats.unlisted_non_guesters.positive? %>
+            <li class="list-group-item text-muted">+ <%= stats.unlisted_non_guesters %> more with 0</li>
+          <% elsif guesters.empty? %>
+            <li class="list-group-item text-muted">No guesting in the last <%= period %> days.</li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+
+  <% [["Top guest hosts", stats.top_hosts], ["Bottom guest hosts", stats.bottom_hosts]].each do |title, hosts| %>
+    <div class="col-md-6">
+      <div class="card unit-guest-stats__card">
+        <div class="card-header"><%= title %> <small class="text-muted">(per drill)</small></div>
+        <ul class="list-group list-group-flush">
+          <% hosts.each do |host| %>
+            <li class="list-group-item">
+              <%= link_to host.unit.abbr, unit_guests_path(host.unit) %>
+              <span class="<%= class_names("text-muted": host.guests.zero?) %>">
+                <%= number_with_precision(host.per_drill, precision: 1) %>
+                <small class="text-muted">(<%= host.guests %> over <%= pluralize(host.drills, "drill") %>)</small>
+              </span>
+            </li>
+          <% end %>
+          <% if hosts.empty? %>
+            <li class="list-group-item text-muted">No drills in the last <%= period %> days.</li>
+          <% end %>
+        </ul>
+      </div>
+    </div>
+  <% end %>
+</div>

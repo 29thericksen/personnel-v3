@@ -15,6 +15,15 @@ class UnitPolicy < ApplicationPolicy
     user&.member?
   end
 
+  # Platoon HQ or higher, on any unit
+  def guest_stats?
+    return false unless guests?
+
+    %w[note_view_pl note_view_co note_view_mp admin].any? do |permission|
+      user.has_permission?(permission)
+    end
+  end
+
   def awols?
     user&.member?
   end

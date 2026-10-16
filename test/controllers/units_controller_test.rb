@@ -96,6 +96,53 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_match "No members have guested at other drills.", response.body
   end
 
+  test "guest stats tab is only for platoon HQ or higher" do
+    sign_in_as @member
+    get unit_guests_url(@company)
+    assert_select ".unit-guests-tabs .nav-link", text: "Guest stats", count: 0
+
+    get unit_guests_url(@company, tab: "stats")
+    assert_redirected_to root_url
+  end
+
+  test "guest stats breaks down guesting by unit and ranks guesters and hosts" do
+    leader = create(:user)
+    leader_unit = create(:unit, abbr: "Baker Co. HQ")
+    create(:permission, abbr: "note_view_co", unit: leader_unit)
+    create(:assignment, user: leader, unit: leader_unit)
+
+    sister = create(:unit, parent: @company, abbr: "Able 1-2")
+    quiet_member = create(:user, last_name: "Quietson")
+    create(:assignment, user: quiet_member, unit: sister)
+
+    # @member guests at a sister squad's drill and at another company's
+    create(:event_guest, user: @member, event: create(:event, unit: sister, starts_at: 10.days.ago))
+    create(:event, unit: sister, starts_at: 20.days.ago)
+    create(:event_guest, user: @member,
+      event: create(:event, unit: create(:unit, abbr: "Dog Co. HQ"), starts_at: 50.days.ago))
+    # An outsider guests at @squad's only drill
+    create(:event_guest, event: create(:event, unit: @squad, starts_at: 5.days.ago))
+
+    sign_in_as leader
+    get unit_guests_url(@company, tab: "stats")
+
+    assert_response :success
+    assert_select ".unit-guests-tabs .nav-link.active", text: "Guest stats"
+    rows = css_select("tbody tr").map { |tr| tr.css("td").map { |td| td.text.strip } }
+    assert_equal [%w[Able\ 1-1 1 1 1 1], %w[Able\ 1-2 1 0 0 0]], rows
+    assert_equal %w[2 1 1 1], css_select("tfoot td").map { |td| td.text.strip }
+
+    top_guesters, bottom_guesters, top_hosts, _bottom_hosts = css_select(".unit-guest-stats__card")
+    assert_match(/#{@member.short_name}\s+2/, top_guesters.text)
+    assert_match(/#{quiet_member.short_name}\s+0/, bottom_guesters.text)
+    assert_match(/Able 1-1\s+1\.0\s+\(1 over 1 drill\)\s+Able 1-2\s+0\.5/, top_hosts.text.squish)
+
+    get unit_guests_url(@company, tab: "stats", period: 30)
+
+    top_guesters = css_select(".unit-guest-stats__card").first
+    assert_match(/#{@member.short_name}\s+1/, top_guesters.text)
+  end
+
   test "awols groups recent awols by user" do
     event = create(:event, unit: @squad, mandatory: true, starts_at: 1.week.ago)
     create(:attendance_record, user: @member, event: event,

@@ -27,6 +27,33 @@
   text-align: right;
 }
 
+.unit-guest-stats__heading {
+  margin-top: 0.5rem;
+}
+
+.unit-guest-stats__total {
+  font-weight: bold;
+}
+
+.unit-guest-stats__periods {
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0 1rem;
+
+  span {
+    margin-right: 0.5rem;
+  }
+}
+
+.unit-guest-stats__card {
+  margin-bottom: 1rem;
+
+  .list-group-item {
+    display: flex;
+    justify-content: space-between;
+  }
+}
+
 .unit-attendance {
   .unit-attendance__attendance-col {
     text-align: right;
