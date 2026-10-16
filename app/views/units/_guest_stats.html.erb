@@ -11,27 +11,25 @@
 </div>
 
 <div class="row">
-  <% [["Top guesters", stats.top_guesters], ["Bottom guesters", stats.bottom_guesters]].each do |title, guesters| %>
-    <div class="col-md-6">
-      <div class="card unit-guest-stats__card">
-        <div class="card-header"><%= title %></div>
-        <ul class="list-group list-group-flush">
-          <% guesters.each do |guester| %>
-            <li class="list-group-item">
-              <%= link_to guester.user, user_attendance_path(guester.user, filter: "guested") %>
-              <span class="<%= class_names("text-muted": guester.count.zero?) %>"><%= guester.count %></span>
-            </li>
-          <% end %>
-          <% if title == "Bottom guesters" && stats.unlisted_non_guesters.positive? %>
-            <li class="list-group-item text-muted">+ <%= stats.unlisted_non_guesters %> more with 0</li>
-          <% elsif guesters.empty? %>
-            <li class="list-group-item text-muted">No guesting in the last <%= period %> days.</li>
-          <% end %>
-        </ul>
-      </div>
+  <div class="col-md-6">
+    <div class="card unit-guest-stats__card">
+      <div class="card-header">Top guesters</div>
+      <ul class="list-group list-group-flush">
+        <% stats.top_guesters.each do |guester| %>
+          <li class="list-group-item">
+            <%= link_to guester.user, user_attendance_path(guester.user, filter: "guested") %>
+            <span><%= guester.count %></span>
+          </li>
+        <% end %>
+        <% if stats.top_guesters.empty? %>
+          <li class="list-group-item text-muted">No guesting in the last <%= period %> days.</li>
+        <% end %>
+      </ul>
     </div>
-  <% end %>
+  </div>
+</div>
 
+<div class="row">
   <% [["Top guest hosts", stats.top_hosts], ["Bottom guest hosts", stats.bottom_hosts]].each do |title, hosts| %>
     <div class="col-md-6">
       <div class="card unit-guest-stats__card">

@@ -39,21 +39,17 @@ class UnitGuestStats
   end
 
   def top_guesters
-    guesters
-      .select { |guester| guester.count.positive? }
-      .sort_by { |guester| [-guester.count, -guester.user.rank.order, guester.user.last_name] }
-      .first(RANKING_SIZE)
-  end
-
-  def bottom_guesters
-    guesters
-      .sort_by { |guester| [guester.count, guester.user.last_name] }
-      .first(RANKING_SIZE)
-  end
-
-  # Members who didn't guest at all but didn't fit in #bottom_guesters
-  def unlisted_non_guesters
-    [guesters.count { |guester| guester.count.zero? } - RANKING_SIZE, 0].max
+    @top_guesters ||= begin
+      counts = EventGuest.past
+        .where(member_id: all_member_ids)
+        .where(events: {starts_at: since..})
+        .group(:member_id)
+        .count
+      User.where(id: counts.keys).includes(:rank)
+        .map { |user| Guester.new(user, counts[user.id]) }
+        .sort_by { |guester| [-guester.count, -guester.user.rank.order, guester.user.last_name] }
+        .first(RANKING_SIZE)
+    end
   end
 
   # Units in the subtree that held drills in the period, ranked by guests per drill
@@ -107,19 +103,6 @@ class UnitGuestStats
     PERIODS.index_with do |days|
       cutoff = days.days.ago
       member_ids.count { |id| last_guested_at.key?(id) && last_guested_at[id] >= cutoff }
-    end
-  end
-
-  def guesters
-    @guesters ||= begin
-      counts = EventGuest.past
-        .where(member_id: all_member_ids)
-        .where(events: {starts_at: since..})
-        .group(:member_id)
-        .count
-      User.where(id: all_member_ids).includes(:rank).map do |user|
-        Guester.new(user, counts.fetch(user.id, 0))
-      end
     end
   end
 

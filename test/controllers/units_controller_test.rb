@@ -132,9 +132,9 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [%w[Able\ 1-1 1 1 1 1], %w[Able\ 1-2 1 0 0 0]], rows
     assert_equal %w[2 1 1 1], css_select("tfoot td").map { |td| td.text.strip }
 
-    top_guesters, bottom_guesters, top_hosts, _bottom_hosts = css_select(".unit-guest-stats__card")
+    top_guesters, top_hosts, _bottom_hosts = css_select(".unit-guest-stats__card")
     assert_match(/#{@member.short_name}\s+2/, top_guesters.text)
-    assert_match(/#{quiet_member.short_name}\s+0/, bottom_guesters.text)
+    refute_match quiet_member.short_name, top_guesters.text
     assert_match(/Able 1-1\s+1\.0\s+\(1 over 1 drill\)\s+Able 1-2\s+0\.5/, top_hosts.text.squish)
 
     get unit_guests_url(@company, tab: "stats", period: 30)
@@ -152,7 +152,8 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as leader
     get unit_guests_url(@company, tab: "stats")
 
-    _top_guesters, _bottom_guesters, top_hosts, bottom_hosts = css_select(".unit-guest-stats__card")
+    top_guesters, top_hosts, bottom_hosts = css_select(".unit-guest-stats__card")
+    assert_match "No guesting in the last 90 days.", top_guesters.text
     assert_match "No guests in the last 90 days.", top_hosts.text
     assert_match(/Able 1-1\s+0\.0/, bottom_hosts.text)
   end
