@@ -6,6 +6,10 @@
 # Before attendance is taken it lists everyone expected, tagging LOAs. After,
 # it lists the attendance records; anyone who can't be placed in the tree is
 # returned by #other rather than silently dropped.
+#
+# With expected_only: true it always lists everyone expected, tagging LOAs,
+# even after attendance is taken. That is the set the AAR form records
+# attendance for (Event#update_attendance).
 class EventRoster
   Group = Struct.new(:unit, :entries, :children) do
     def all_entries
@@ -24,8 +28,9 @@ class EventRoster
 
   attr_reader :event
 
-  def initialize(event)
+  def initialize(event, expected_only: false)
     @event = event
+    @expected_only = expected_only
     @placed_ids = Set.new
   end
 
@@ -44,7 +49,7 @@ class EventRoster
   def other
     @other ||= begin
       root # place everyone in the tree first
-      if attendance_taken?
+      if listing_records?
         records.reject { |record| @placed_ids.include?(record.member_id) }
           .map { |record| Entry.new(record.user, record.status) }
       else
@@ -71,15 +76,20 @@ class EventRoster
 
   def place(user)
     return if @placed_ids.include?(user.id) # guard: list each member once
-    return if attendance_taken? && !records_by_member_id.key?(user.id)
+    return if listing_records? && !records_by_member_id.key?(user.id)
 
     @placed_ids << user.id
     Entry.new(user, status_for(user))
   end
 
+  # List attendance records (and their statuses) rather than everyone expected
+  def listing_records?
+    attendance_taken? && !@expected_only
+  end
+
   def status_for(user)
     record = records_by_member_id[user.id]
-    if attendance_taken?
+    if listing_records?
       record.status
     elsif extended_loa_member_ids.include?(user.id)
       :extended_loa

@@ -1,0 +1,11 @@
+<ul class="attendance attendance-checkboxes">
+  <% entries.each do |entry| %>
+    <% id = "event_user_ids_#{entry.user.id}" %>
+    <li class="form-check">
+      <%= check_box_tag "event[user_ids][]", entry.user.id, attended_user_ids.include?(entry.user.id),
+        id: id, class: "form-check-input" %>
+      <%= label_tag id, entry.user.to_s, class: "form-check-label" %>
+      <%= attendance_badge(entry.status) %>
+    </li>
+  <% end %>
+</ul>

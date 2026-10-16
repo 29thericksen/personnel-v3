@@ -1,3 +1,6 @@
+<%# list_partial renders each unit's members: links on the event page, checkboxes on the AAR form %>
+<% list_partial = local_assigns.fetch(:list_partial, "attendance_list") %>
+<% list_locals = local_assigns.fetch(:list_locals, {}) %>
 <%# A squad drill (one unit, no sub-units) needs no heading %>
 <% show_heading = !(top && group.children.empty?) %>
 <div class="attendance-group">
@@ -18,9 +21,10 @@
     </div>
   <% end %>
   <% if group.entries.any? %>
-    <%= render "attendance_list", entries: group.entries %>
+    <%= render list_partial, entries: group.entries, **list_locals %>
   <% end %>
   <% group.children.each do |child| %>
-    <%= render "attendance_group", group: child, parent: group.unit, top: false, attendance_taken: attendance_taken %>
+    <%= render "attendance_group", group: child, parent: group.unit, top: false, attendance_taken: attendance_taken,
+      list_partial: list_partial, list_locals: list_locals %>
   <% end %>
 </div>

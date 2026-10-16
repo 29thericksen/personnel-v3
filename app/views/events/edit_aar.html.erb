@@ -9,8 +9,11 @@
   <%= simple_form_for @event, url: aar_event_path(@event), method: :patch do |f| %>
     <div class="row">
       <div class="col-4">
-        <%= f.association :users, as: :check_boxes,
-          collection: @expected_users, checked: @attended_user_ids %>
+        <label class="font-weight-bold">Attendance</label>
+        <%# Always sent, so unchecking everyone still submits the field %>
+        <%= hidden_field_tag "event[user_ids][]", "", id: nil %>
+        <%= render "attendance_group", group: @roster.root, parent: nil, top: true, attendance_taken: false,
+          list_partial: "attendance_checkboxes", list_locals: {attended_user_ids: @attended_user_ids} %>
       </div>
       <div class="col-8">
         <%= render "guest_picker", event: @event, guests: @guests %>

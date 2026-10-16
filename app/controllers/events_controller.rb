@@ -25,7 +25,7 @@ class EventsController < ApplicationController
   def edit_aar
     @event = Event.find(params[:id])
     @attended_user_ids = @event.attendance_records.where(attended: true).pluck(:member_id)
-    @expected_users = @event.expected_users.order("ranks.order DESC", "last_name")
+    @roster = EventRoster.new(@event, expected_only: true)
     @guests = guests_for(@event)
     authorize @event, :aar?
   end
@@ -62,7 +62,7 @@ class EventsController < ApplicationController
       redirect_to @event, notice: "AAR was successfully updated."
     else
       @attended_user_ids = @event.attendance_records.where(attended: true).pluck(:member_id)
-      @expected_users = @event.expected_users.order("ranks.order DESC", "last_name")
+      @roster = EventRoster.new(@event, expected_only: true)
       @guests = guests_for(@event)
       render :edit_aar
     end

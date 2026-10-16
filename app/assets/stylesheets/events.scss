@@ -129,6 +129,12 @@
   ul.attendance {
     margin-bottom: 0;
   }
+
+  // AAR form: Bootstrap's .form-check on each li supplies the checkbox indent
+  ul.attendance-checkboxes {
+    list-style: none;
+    padding-left: 0;
+  }
 }
 
 time[title],

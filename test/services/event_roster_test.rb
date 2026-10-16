@@ -70,6 +70,23 @@ class EventRosterTest < ActiveSupport::TestCase
     assert_equal({attended: 1, absent: 1}, roster.counts)
   end
 
+  test "expected_only lists everyone expected even after attendance is taken" do
+    attended = assign(@first_squad)
+    on_loa = assign(@first_squad)
+    not_recorded = assign(@first_squad)
+    outsider = create(:user) # record but not expected
+    event = create(:event, unit: @platoon)
+    create(:attendance_record, event: event, user: attended, attended: true)
+    create(:attendance_record, event: event, user: on_loa, attended: false, excused: true)
+    create(:attendance_record, event: event, user: outsider, attended: true)
+
+    roster = EventRoster.new(event, expected_only: true)
+
+    statuses = roster.entries.to_h { |entry| [entry.user, entry.status] }
+    assert_equal({attended => nil, on_loa => :loa, not_recorded => nil}, statuses)
+    assert_empty roster.other, "Expected members who aren't expected to be left off the form"
+  end
+
   test "includes members of inactive sub-units" do
     old_squad = create(:unit, parent: @platoon, active: false)
     member = assign(old_squad)

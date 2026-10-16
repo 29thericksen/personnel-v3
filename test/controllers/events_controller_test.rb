@@ -409,4 +409,33 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h4", text: "Attendance"
     assert_select ".attendance-summary", text: /1 of 2 attended\s+· 0 excused\s+· 1 AWOL/
   end
+
+  test "aar form should group expected members by unit and check those who attended" do
+    sign_in_as @user
+    squad = create(:unit, parent: @unit, name: "First Squad")
+    squad_member = create(:assignment, unit: squad).user
+    event = create(:event, unit: @unit)
+    create(:attendance_record, event: event, user: squad_member, attended: true)
+    create(:attendance_record, event: event, user: @user, attended: false)
+
+    get aar_event_url(event)
+
+    assert_response :success
+    assert_select ".attendance-group-heading", text: /First Squad/
+    assert_select "input[type=checkbox][name='event[user_ids][]']", {count: 2}, "Expected a checkbox per expected member"
+    assert_select "input[type=checkbox][name='event[user_ids][]'][checked]", {count: 1}
+    assert_select "input[type=checkbox][value='#{squad_member.id}'][checked]"
+    assert_select "input[type=hidden][name='event[user_ids][]'][value='']", {count: 1}
+  end
+
+  test "aar form should tag members who posted an loa" do
+    sign_in_as @user
+    on_loa = create(:assignment, unit: @unit).user
+    event = create(:event, unit: @unit)
+    create(:attendance_record, event: event, user: on_loa, attended: nil, excused: true)
+
+    get aar_event_url(event)
+
+    assert_select ".attendance-checkboxes li", {text: /#{on_loa.short_name}\s+LOA/, count: 1}
+  end
 end
