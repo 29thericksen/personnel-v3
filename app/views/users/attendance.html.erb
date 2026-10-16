@@ -1,7 +1,7 @@
 <% content_for(:page_title) { "#{@user.short_name} - Attendance" } %>
 
-<% stats_note = "Attendance percentages are calculated from a member's required drills. " \
-  "Non-Mandatory or Guesting Drills are not included." %>
+<% stats_note = "Attendance percentages are calculated from a member's mandatory drills. " \
+  "Non-Mandatory or Guested Drills are not included." %>
 <h2>
   Attendance
   <span class="user-attendance-info" title="<%= stats_note %>" aria-label="<%= stats_note %>"
