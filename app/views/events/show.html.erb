@@ -50,23 +50,7 @@
         <% end %>
       <% end %>
       
-      <% if @attendance_records.any? %>
-        <h4>Attendance</h4>
-        <ul class="attendance">
-          <% @attendance_records.each do |attendance_record| %>
-            <li>
-              <%= link_to attendance_record.user %>
-              <% case attendance_record.status
-                when :attended %>
-              <% when :extended_loa %><span class="badge badge-secondary">Extended LOA</span>
-              <% when :excused %><span class="badge badge-secondary">Excused</span>
-              <% when :awol %><span class="badge badge-danger">AWOL</span>
-              <% when :absent %><span class="badge badge-warning">Absent</span>
-              <% end %>
-            </li>
-          <% end %>
-        </ul>
-      <% end%>
+      <%= render "attendance", roster: @roster %>
 
       <% if @guests.any? %>
         <h4>Guests</h4>

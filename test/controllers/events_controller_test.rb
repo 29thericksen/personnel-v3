@@ -61,14 +61,17 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
 
   # on personnel-v2, cancelling an LOA before attendance had been posted
   # simply changed excused to false, rather than deleting the record like v3.
-  test "attendance list should omit users who cancelled their loa on personnel-v2 if attendance hasn't been posted" do
+  # Before attendance is posted the page lists everyone expected, so the user
+  # is still listed; they just mustn't be shown as on LOA.
+  test "expected list should not show users who cancelled their loa on personnel-v2 as on LOA" do
     sign_in_as @user
     event = create(:event, unit: @unit)
 
     create(:attendance_record, attended: nil, excused: false, event: event, user: @user)
     get event_url(event)
 
-    assert_select ".attendance li", {text: /#{@user.short_name}/, count: 0}, "Expected user not to be listed"
+    assert_select ".attendance li", {text: /#{@user.short_name}/, count: 1}, "Expected user to be listed as expected"
+    assert_select ".attendance li span", {text: "LOA", count: 0}, "Expected no one to be shown as on LOA"
   end
 
   test "should emphasise events user is expected at" do
@@ -365,5 +368,45 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     get aar_guests_event_url(other_unit_event), params: {q: "gall"}, as: :json
 
     assert_redirected_to root_url
+  end
+
+  test "before attendance is posted, should list everyone expected and tag LOAs" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    on_loa = create(:user)
+    create(:assignment, user: on_loa, unit: @unit)
+    create(:attendance_record, attended: nil, excused: true, event: event, user: on_loa)
+
+    get event_url(event)
+
+    assert_select "h4", text: "Expected"
+    assert_select ".attendance li", {count: 2}, "Expected both expected members to be listed"
+    assert_select ".attendance li span", {text: "LOA", count: 1}, "Expected 1 member to be tagged LOA"
+    assert_select ".attendance-summary", text: /2 expected\s+· 1 LOA\s+· 1 available/
+  end
+
+  test "attendance should be grouped by unit for a platoon event" do
+    sign_in_as @user
+    squad = create(:unit, parent: @unit, name: "First Squad")
+    create(:assignment, unit: squad)
+    event = create(:event, unit: @unit)
+
+    get event_url(event)
+
+    assert_select ".attendance-group-heading", text: /First Squad/
+  end
+
+  test "after attendance is posted, should show the attendance summary" do
+    sign_in_as @user
+    event = create(:event, unit: @unit, mandatory: true)
+    create(:attendance_record, attended: true, event: event, user: @user)
+    absent_user = create(:user)
+    create(:assignment, user: absent_user, unit: @unit)
+    create(:attendance_record, attended: false, excused: false, event: event, user: absent_user)
+
+    get event_url(event)
+
+    assert_select "h4", text: "Attendance"
+    assert_select ".attendance-summary", text: /1 of 2 attended\s+· 0 excused\s+· 1 AWOL/
   end
 end

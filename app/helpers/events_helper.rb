@@ -19,6 +19,31 @@ module EventsHelper
     end
   end
 
+  ATTENDANCE_BADGES = {
+    loa: ["LOA", "secondary"],
+    extended_loa: ["Extended LOA", "secondary"],
+    excused: ["Excused", "secondary"],
+    awol: ["AWOL", "danger"],
+    absent: ["Absent", "warning"]
+  }.freeze
+
+  # Badge for an EventRoster entry's status; attended members get none.
+  def attendance_badge(status)
+    label, style = ATTENDANCE_BADGES[status]
+    tag.span(label, class: "badge badge-#{style}") if label
+  end
+
+  # segments: [[count, kind], ...] where kind picks the colour.
+  def attendance_bar(total, segments)
+    return if total.zero?
+
+    spans = segments.filter_map do |count, kind|
+      next if count.zero?
+      tag.span(class: "attendance-bar-#{kind}", style: "width: #{(count * 100.0 / total).round(2)}%")
+    end
+    tag.div(safe_join(spans), class: "attendance-bar", "aria-hidden": "true")
+  end
+
   def calendar_wrapper(options = {}, &block)
     if options[:view_by] == "month"
       month_calendar(options, &block)

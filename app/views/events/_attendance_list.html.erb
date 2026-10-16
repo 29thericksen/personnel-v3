@@ -1,0 +1,5 @@
+<ul class="attendance">
+  <% entries.each do |entry| %>
+    <li><%= link_to entry.user %> <%= attendance_badge(entry.status) %></li>
+  <% end %>
+</ul>

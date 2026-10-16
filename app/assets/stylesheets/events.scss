@@ -87,6 +87,50 @@
   }
 }
 
+.attendance-summary {
+  color: $khaki-web;
+  font-size: 90%;
+  margin-bottom: .4rem;
+}
+
+.attendance-bar {
+  display: flex;
+  height: 6px;
+  border-radius: 2px;
+  overflow: hidden;
+  background-color: $black-olive;
+  margin-bottom: .5rem;
+
+  // events.scss compiles on its own (require_tree), so Bootstrap's
+  // $success / $info aren't in scope here
+  .attendance-bar-attended { background-color: #7fa36b; }
+  .attendance-bar-available { background-color: #8aa3b8; }
+  .attendance-bar-excused { background-color: $khaki-web; }
+  .attendance-bar-missed { background-color: $danger; }
+}
+
+.attendance-group {
+  .attendance-group {
+    margin-left: .75rem;
+  }
+
+  .attendance-group-heading {
+    display: flex;
+    justify-content: space-between;
+    border-bottom: 1px solid $davys-grey;
+    color: $khaki-web;
+    font-size: 80%;
+    font-weight: bold;
+    letter-spacing: .05em;
+    text-transform: uppercase;
+    margin: .6rem 0 .2rem;
+  }
+
+  ul.attendance {
+    margin-bottom: 0;
+  }
+}
+
 time[title],
 time[data-original-title] {
   text-decoration: underline dotted;

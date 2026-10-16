@@ -1,0 +1,26 @@
+<%# A squad drill (one unit, no sub-units) needs no heading %>
+<% show_heading = !(top && group.children.empty?) %>
+<div class="attendance-group">
+  <% if show_heading %>
+    <div class="attendance-group-heading">
+      <%# Unit names carry their full path ("Able Company, First Platoon"); under a parent, drop its part %>
+      <span><%= parent ? group.unit.name.delete_prefix("#{parent.name}, ") : group.unit.name %></span>
+      <% unless top %><%# the summary above already gives the event total %>
+        <% members = group.all_entries %>
+        <span>
+          <% if attendance_taken %>
+            <%= members.count { |entry| entry.status == :attended } %>/<%= members.size %>
+          <% else %>
+            <%= members.size %>
+          <% end %>
+        </span>
+      <% end %>
+    </div>
+  <% end %>
+  <% if group.entries.any? %>
+    <%= render "attendance_list", entries: group.entries %>
+  <% end %>
+  <% group.children.each do |child| %>
+    <%= render "attendance_group", group: child, parent: group.unit, top: false, attendance_taken: attendance_taken %>
+  <% end %>
+</div>
