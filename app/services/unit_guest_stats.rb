@@ -3,13 +3,13 @@
 # between sub-units counts.
 #
 # #unit_rows covers every unit with members assigned directly to it (squads,
-# plus HQ elements), with how many of them guested in the last 30, 60 and 90
-# days. The guester and host rankings cover the chosen period only.
+# plus HQ elements), with how many drills its members guested in the last 30,
+# 60 and 90 days. The guester and host rankings cover the chosen period only.
 class UnitGuestStats
   PERIODS = EventGuest::COUNT_PERIODS
   RANKING_SIZE = 5
 
-  # guested is {30 => count, 60 => count, 90 => count} of members who guested
+  # guested is {30 => count, 60 => count, 90 => count} of drills guested
   UnitRow = Struct.new(:unit, :members, :guested)
   Guester = Struct.new(:user, :count)
   Host = Struct.new(:unit, :guests, :drills) do
@@ -92,17 +92,19 @@ class UnitGuestStats
     @all_member_ids ||= member_ids_by_unit.values.flatten.uniq
   end
 
-  def last_guested_at
-    @last_guested_at ||= EventGuest.past
+  # {member_id => EventGuest.period_counts row}
+  def counts_by_member
+    @counts_by_member ||= EventGuest
       .where(member_id: all_member_ids)
+      .period_counts
+      .select(:member_id)
       .group(:member_id)
-      .maximum("events.starts_at")
+      .index_by(&:member_id)
   end
 
   def guested_counts(member_ids)
     PERIODS.index_with do |days|
-      cutoff = days.days.ago
-      member_ids.count { |id| last_guested_at.key?(id) && last_guested_at[id] >= cutoff }
+      member_ids.sum { |id| counts_by_member[id]&.public_send(:"last_#{days}_days") || 0 }
     end
   end
 

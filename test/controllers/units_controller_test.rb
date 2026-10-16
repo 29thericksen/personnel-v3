@@ -129,8 +129,8 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
     assert_select ".unit-guests-tabs .nav-link.active", text: "Guest stats"
     rows = css_select("tbody tr").map { |tr| tr.css("td").map { |td| td.text.strip } }
-    assert_equal [%w[Able\ 1-1 1 1 1 1], %w[Able\ 1-2 1 0 0 0]], rows
-    assert_equal %w[2 1 1 1], css_select("tfoot td").map { |td| td.text.strip }
+    assert_equal [%w[Able\ 1-1 1 1 2 2], %w[Able\ 1-2 1 0 0 0]], rows
+    assert_equal %w[2 1 2 2], css_select("tfoot td").map { |td| td.text.strip }
 
     top_guesters, top_hosts, _bottom_hosts = css_select(".unit-guest-stats__card")
     assert_match(/#{@member.short_name}\s+2/, top_guesters.text)
