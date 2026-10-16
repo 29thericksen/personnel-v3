@@ -1,37 +1,3 @@
-<h4 class="unit-guest-stats__heading">Members who guested, by unit</h4>
-
-<table class="table table-striped unit-guests">
-  <thead>
-    <tr>
-      <th scope="col">Unit</th>
-      <th class="unit-guests__count-col" scope="col">Members</th>
-      <% UnitGuestStats::PERIODS.each do |days| %>
-        <th class="unit-guests__count-col" scope="col">Last <%= days %> days</th>
-      <% end %>
-    </tr>
-  </thead>
-  <tbody>
-  <% stats.unit_rows.each do |row| %>
-    <tr>
-      <td><%= link_to row.unit.abbr, unit_guests_path(row.unit) %></td>
-      <td class="unit-guests__count-col"><%= row.members %></td>
-      <% row.guested.each_value do |count| %>
-        <td class="<%= class_names("unit-guests__count-col", "text-muted": count.zero?) %>"><%= count %></td>
-      <% end %>
-    </tr>
-  <% end %>
-  </tbody>
-  <tfoot>
-    <tr class="unit-guest-stats__total">
-      <th scope="row"><%= stats.unit.subtree_abbr %> total</th>
-      <td class="unit-guests__count-col"><%= stats.total_row.members %></td>
-      <% stats.total_row.guested.each_value do |count| %>
-        <td class="unit-guests__count-col"><%= count %></td>
-      <% end %>
-    </tr>
-  </tfoot>
-</table>
-
 <div class="unit-guest-stats__periods">
   <span>Rankings over:</span>
   <ul class="nav nav-pills">
@@ -88,3 +54,37 @@
     </div>
   <% end %>
 </div>
+
+<h4 class="unit-guest-stats__heading">Members who guested, by unit</h4>
+
+<table class="table table-striped unit-guests">
+  <thead>
+    <tr>
+      <th scope="col">Unit</th>
+      <th class="unit-guests__count-col" scope="col">Members</th>
+      <% UnitGuestStats::PERIODS.each do |days| %>
+        <th class="unit-guests__count-col" scope="col">Last <%= days %> days</th>
+      <% end %>
+    </tr>
+  </thead>
+  <tbody>
+  <% stats.unit_rows.each do |row| %>
+    <tr>
+      <td><%= link_to row.unit.abbr, unit_guests_path(row.unit) %></td>
+      <td class="unit-guests__count-col"><%= row.members %></td>
+      <% row.guested.each_value do |count| %>
+        <td class="<%= class_names("unit-guests__count-col", "text-muted": count.zero?) %>"><%= count %></td>
+      <% end %>
+    </tr>
+  <% end %>
+  </tbody>
+  <tfoot>
+    <tr class="unit-guest-stats__total">
+      <th scope="row"><%= stats.unit.subtree_abbr %> total</th>
+      <td class="unit-guests__count-col"><%= stats.total_row.members %></td>
+      <% stats.total_row.guested.each_value do |count| %>
+        <td class="unit-guests__count-col"><%= count %></td>
+      <% end %>
+    </tr>
+  </tfoot>
+</table>
