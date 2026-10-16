@@ -52,16 +52,18 @@ class UnitGuestStats
     end
   end
 
-  # Units in the subtree that held drills in the period, ranked by guests per drill
-  def top_hosts
-    hosts
-      .select { |host| host.guests.positive? }
-      .sort_by { |host| [-host.per_drill, -host.guests, host.unit.abbr] }
-      .first(RANKING_SIZE)
-  end
-
-  def bottom_hosts
-    hosts.sort_by { |host| [host.per_drill, host.guests, host.unit.abbr] }.first(RANKING_SIZE)
+  # Every unit in the subtree that held drills in the period, ranked by
+  # guests per drill
+  def hosts
+    @hosts ||= begin
+      events = Event.for_unit(unit.subtree).past.where(starts_at: since..)
+      drills = events.group(:unit_id).count
+      guests = EventGuest.joins(:event).merge(events).group("events.unit_id").count
+      units = Unit.where(id: drills.keys).index_by(&:id)
+      drills
+        .map { |unit_id, count| Host.new(units[unit_id], guests.fetch(unit_id, 0), count) }
+        .sort_by { |host| [-host.per_drill, -host.guests, host.unit.abbr] }
+    end
   end
 
   private
@@ -105,16 +107,6 @@ class UnitGuestStats
   def guested_counts(member_ids)
     PERIODS.index_with do |days|
       member_ids.sum { |id| counts_by_member[id]&.public_send(:"last_#{days}_days") || 0 }
-    end
-  end
-
-  def hosts
-    @hosts ||= begin
-      events = Event.for_unit(unit.subtree).past.where(starts_at: since..)
-      drills = events.group(:unit_id).count
-      guests = EventGuest.joins(:event).merge(events).group("events.unit_id").count
-      units = Unit.where(id: drills.keys).index_by(&:id)
-      drills.map { |unit_id, count| Host.new(units[unit_id], guests.fetch(unit_id, 0), count) }
     end
   end
 end

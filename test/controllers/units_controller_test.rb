@@ -128,22 +128,18 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select ".unit-guests-tabs .nav-link.active", text: "Guest stats"
-    rows = css_select("tbody tr").map { |tr| tr.css("td").map { |td| td.text.strip } }
-    assert_equal [%w[Able\ 1-1 1 1 2 2], %w[Able\ 1-2 1 0 0 0]], rows
-    assert_equal %w[2 1 2 2], css_select("tfoot td").map { |td| td.text.strip }
+    assert_equal [%w[Able\ 1-1 1 1 2 2], %w[Able\ 1-2 1 0 0 0]], table_rows(".unit-guest-stats__by-unit")
+    assert_equal %w[2 1 2 2], css_select(".unit-guest-stats__by-unit tfoot td").map { |td| td.text.strip }
 
-    top_guesters, top_hosts, _bottom_hosts = css_select(".unit-guest-stats__card")
-    assert_match(/#{@member.short_name}\s+2/, top_guesters.text)
-    refute_match quiet_member.short_name, top_guesters.text
-    assert_match(/Able 1-1\s+1\.0\s+\(1 over 1 drill\)\s+Able 1-2\s+0\.5/, top_hosts.text.squish)
+    assert_equal [[@member.short_name, "2"]], table_rows(".unit-guest-stats__guesters")
+    assert_equal [%w[Able\ 1-1 1.0 1 1], %w[Able\ 1-2 0.5 1 2]], table_rows(".unit-guest-stats__hosts")
 
     get unit_guests_url(@company, tab: "stats", period: 30)
 
-    top_guesters = css_select(".unit-guest-stats__card").first
-    assert_match(/#{@member.short_name}\s+1/, top_guesters.text)
+    assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
   end
 
-  test "guest stats leaves units without guests out of the top hosts" do
+  test "guest stats with no guesting shows empty states and every host" do
     leader = create(:user)
     create(:permission, abbr: "note_view_pl", unit: @company)
     create(:assignment, user: leader, unit: @company)
@@ -152,10 +148,8 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     sign_in_as leader
     get unit_guests_url(@company, tab: "stats")
 
-    top_guesters, top_hosts, bottom_hosts = css_select(".unit-guest-stats__card")
-    assert_match "No guesting in the last 90 days.", top_guesters.text
-    assert_match "No guests in the last 90 days.", top_hosts.text
-    assert_match(/Able 1-1\s+0\.0/, bottom_hosts.text)
+    assert_equal [["No guesting in the last 90 days."]], table_rows(".unit-guest-stats__guesters")
+    assert_equal [%w[Able\ 1-1 0.0 0 1]], table_rows(".unit-guest-stats__hosts")
   end
 
   test "awols groups recent awols by user" do
@@ -265,5 +259,13 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
 
     assert_redirected_to root_url
     assert_match(/not authorized/, flash[:alert])
+  end
+
+  private
+
+  def table_rows(table_selector)
+    css_select("#{table_selector} tbody tr").map do |tr|
+      tr.css("td").map { |td| td.text.strip }
+    end
   end
 end
