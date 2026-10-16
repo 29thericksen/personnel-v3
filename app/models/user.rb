@@ -37,6 +37,7 @@ class User < ApplicationRecord
   has_many :ait_qualifications, foreign_key: "member_id"
   has_many :ait_standards, through: :ait_qualifications
   has_many :attendance_records, foreign_key: "member_id"
+  has_many :event_guests, foreign_key: "member_id"
   has_many :recruited_enlistments, class_name: "Enlistment",
     foreign_key: "recruiter_member_id", inverse_of: :recruiter_user
   has_many :accepted_recruited_enlistments, -> { accepted },

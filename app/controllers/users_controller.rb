@@ -26,11 +26,32 @@ class UsersController < ApplicationController
       .group_by { |item| item.date.year }
   end
 
+  # "required" is every event the member was expected at (their own unit's),
+  # "guested" is every event they joined as a guest from outside the unit.
+  ATTENDANCE_FILTERS = %w[all required guested].freeze
+
   def attendance
-    @attendance_records = @user.attendance_records
-      .includes(event: :unit)
-      .order("event.starts_at DESC")
+    @filter = ATTENDANCE_FILTERS.include?(params[:filter]) ? params[:filter] : "all"
+
+    required_events = Event.where(id: @user.attendance_records.select(:event_id))
+    guested_events = Event.where(id: @user.event_guests.select(:event_id))
+    events_by_filter = {
+      "all" => required_events.or(guested_events),
+      "required" => required_events,
+      "guested" => guested_events
+    }
+
+    @filter_counts = events_by_filter.transform_values(&:count)
+    @events = events_by_filter[@filter]
+      .includes(:unit)
+      .desc
       .page(params[:page])
+
+    # Events without a record here are ones the member guested
+    @attendance_records = @user.attendance_records
+      .includes(:user, :event)
+      .where(event_id: @events.map(&:id))
+      .index_by(&:event_id)
 
     @attendance_stats = @user.attendance_stats
   end

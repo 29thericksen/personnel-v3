@@ -16,6 +16,18 @@
   <dd><%= @attendance_stats.total.round %>%</dd>
 </dl>
 
+<ul class="nav nav-pills user-attendance-filters">
+  <% {"all" => "All Drills", "required" => "Required Drills", "guested" => "Guested Drills"}.each do |filter, label| %>
+    <li class="nav-item">
+      <%= link_to user_attendance_path(@user, filter: (filter unless filter == "all")),
+            class: class_names("nav-link", active: @filter == filter) do %>
+        <%= label %>
+        <span class="badge badge-light"><%= @filter_counts[filter] %></span>
+      <% end %>
+    </li>
+  <% end %>
+</ul>
+
 <table class="table table-striped">
   <thead>
     <tr>
@@ -26,33 +38,45 @@
     </tr>
   </thead>
   <tbody>
-  <% @attendance_records.each do |attendance_record| %>
-    <% event = attendance_record.event %>
+  <% @events.each do |event| %>
+    <% attendance_record = @attendance_records[event.id] %>
     <tr>
       <td><%= timestamp_tag event.starts_at %></td>
       <td><%= link_to event.title, event %></td>
-      <td><%= event.mandatory %></td>
-      <td>
-        <% if !attendance_record.attended %>
-          <% if attendance_record.excused %>
-            <% if policy(ExtendedLOA).index? &&
-              attendance_record.excused_by_extended_loa? %>
-              <span class="badge badge-secondary">Extended LOA</span>
+      <% if attendance_record.nil? %>
+        <td>&mdash;</td>
+        <td><span class="badge badge-info">Guest</span></td>
+      <% else %>
+        <td><%= event.mandatory %></td>
+        <td>
+          <% if !attendance_record.attended %>
+            <% if attendance_record.excused %>
+              <% if policy(ExtendedLOA).index? &&
+                attendance_record.excused_by_extended_loa? %>
+                <span class="badge badge-secondary">Extended LOA</span>
+              <% else %>
+                <span class="badge badge-secondary">Excused</span>
+              <% end %>
             <% else %>
-              <span class="badge badge-secondary">Excused</span>
+              <% if event.mandatory %>
+                <span class="badge badge-danger">AWOL</span>
+              <% else %>
+                <span class="badge badge-warning">Absent</span>
+              <% end %>
             <% end %>
           <% else %>
-            <% if event.mandatory %>
-              <span class="badge badge-danger">AWOL</span>
-            <% else %>
-              <span class="badge badge-warning">Absent</span>
-            <% end %>
+            <span class="badge badge-success">Attended</span>
           <% end %>
-        <% else %>
-          <span class="badge badge-success">Attended</span>
-        <% end %>
+        </td>
+      <% end %>
+    </tr>
+  <% end %>
+  <% if @events.empty? %>
+    <tr>
+      <td colspan="4" class="text-muted">No drills to show.</td>
+    </tr>
   <% end %>
   </tbody>
 </table>
 
-<%= paginate @attendance_records %>
+<%= paginate @events %>

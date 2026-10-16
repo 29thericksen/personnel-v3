@@ -41,6 +41,83 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "attendance lists own events and guested events together" do
+    record = create(:attendance_record, :attended, user: @subject,
+      event_starts_at: 3.days.ago)
+    guested = create(:event, starts_at: 2.days.ago)
+    create(:event_guest, event: guested, user: @subject)
+
+    sign_in_as @user
+    get user_attendance_url(@subject)
+
+    assert_response :success
+    assert_select "tbody tr", 2
+    assert_select "a[href=?]", event_path(record.event)
+    assert_select "a[href=?]", event_path(guested)
+    assert_select "tbody .badge-success", text: "Attended"
+    assert_select "tbody .badge-info", text: "Guest"
+    assert_select ".user-attendance-filters .nav-link.active", text: /All Drills\s+2/
+    assert_select ".user-attendance-filters .nav-link", text: /Required Drills\s+1/
+    assert_select ".user-attendance-filters .nav-link", text: /Guested Drills\s+1/
+  end
+
+  test "attendance required filter leaves out guested events" do
+    record = create(:attendance_record, :absent, user: @subject,
+      event_starts_at: 3.days.ago)
+    guested = create(:event, starts_at: 2.days.ago)
+    create(:event_guest, event: guested, user: @subject)
+
+    sign_in_as @user
+    get user_attendance_url(@subject, filter: "required")
+
+    assert_response :success
+    assert_select "tbody tr", 1
+    assert_select "a[href=?]", event_path(record.event)
+    assert_select ".badge-info", 0
+    assert_select ".user-attendance-filters .nav-link.active", text: /Required Drills/
+  end
+
+  test "attendance guested filter shows only guested events" do
+    record = create(:attendance_record, :attended, user: @subject,
+      event_starts_at: 3.days.ago)
+    guested = create(:event, starts_at: 2.days.ago, mandatory: true)
+    create(:event_guest, event: guested, user: @subject)
+
+    sign_in_as @user
+    get user_attendance_url(@subject, filter: "guested")
+
+    assert_response :success
+    assert_select "tbody tr", 1
+    assert_select "a[href=?]", event_path(guested)
+    assert_select "a[href=?]", event_path(record.event), 0
+    assert_select "tbody td", text: "—"
+    assert_select "tbody .badge-info", text: "Guest"
+  end
+
+  test "attendance ignores an unknown filter" do
+    create(:attendance_record, :attended, user: @subject,
+      event_starts_at: 3.days.ago)
+
+    sign_in_as @user
+    get user_attendance_url(@subject, filter: "bogus")
+
+    assert_response :success
+    assert_select "tbody tr", 1
+    assert_select ".user-attendance-filters .nav-link.active", text: /All Drills/
+  end
+
+  test "attendance guested filter with no guests shows an empty state" do
+    create(:attendance_record, :attended, user: @subject,
+      event_starts_at: 3.days.ago)
+
+    sign_in_as @user
+    get user_attendance_url(@subject, filter: "guested")
+
+    assert_response :success
+    assert_select "tbody tr", 1
+    assert_match "No drills to show.", response.body
+  end
+
   test "should get qualifications" do
     sign_in_as @user
     get user_qualifications_url(@subject)
