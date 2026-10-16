@@ -407,7 +407,8 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     get event_url(event)
 
     assert_select "h4", text: "Attendance"
-    assert_select ".attendance-summary", text: /1 of 2 attended\s+· 0 excused\s+· 1 AWOL/
+    assert_select ".aar .attendance-overview .attendance-summary", {text: /1 of 2 attended\s+· 0 excused\s+· 1 AWOL/},
+      "Expected the totals above the AAR"
   end
 
   test "aar form should group expected members by unit and check those who attended" do

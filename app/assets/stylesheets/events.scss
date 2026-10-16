@@ -93,6 +93,16 @@
   margin-bottom: .4rem;
 }
 
+// Totals strip above the AAR card
+.attendance-overview {
+  margin-bottom: 1rem;
+
+  .attendance-summary {
+    color: $beige;
+    font-size: 100%;
+  }
+}
+
 .attendance-bar {
   display: flex;
   height: 6px;

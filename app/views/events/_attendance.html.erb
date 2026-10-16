@@ -1,31 +1,6 @@
-<% entries = roster.entries %>
-<% if entries.any? %>
-  <% counts = roster.counts %>
-  <% total = entries.size %>
-  <% if roster.attendance_taken? %>
-    <% attended = counts.fetch(:attended, 0) %>
-    <% excused = counts.fetch(:excused, 0) + counts.fetch(:extended_loa, 0) %>
-    <% missed = counts.fetch(:awol, 0) + counts.fetch(:absent, 0) %>
-    <h4>Attendance</h4>
-    <p class="attendance-summary">
-      <%= attended %> of <%= total %> attended
-      &middot; <%= excused %> excused
-      &middot; <%= missed %> <%= roster.event.mandatory ? "AWOL" : "absent" %>
-    </p>
-    <%= attendance_bar(total, [[attended, "attended"], [excused, "excused"], [missed, "missed"]]) %>
-  <% else %>
-    <% loa = counts.fetch(:loa, 0) %>
-    <% extended_loa = counts.fetch(:extended_loa, 0) %>
-    <% available = total - loa - extended_loa %>
-    <h4>Expected</h4>
-    <p class="attendance-summary">
-      <%= total %> expected
-      &middot; <%= loa %> LOA
-      <% if extended_loa > 0 %>&middot; <%= extended_loa %> Extended LOA<% end %>
-      &middot; <%= available %> available
-    </p>
-    <%= attendance_bar(total, [[available, "available"], [loa + extended_loa, "excused"]]) %>
-  <% end %>
+<%# The totals (summary line and bar) render above the AAR: see _attendance_summary %>
+<% if roster.entries.any? %>
+  <h4><%= roster.attendance_taken? ? "Attendance" : "Expected" %></h4>
 
   <%= render "attendance_group", group: roster.root, parent: nil, top: true, attendance_taken: roster.attendance_taken? %>
 
