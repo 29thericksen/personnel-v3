@@ -2,73 +2,106 @@
 
 <h2>Guests</h2>
 
-<% tabs = {"ours" => "Guests at our drills", "elsewhere" => "Our members guesting elsewhere"}
-   tabs["stats"] = "Guest stats" if policy(@unit).guest_stats? %>
-<ul class="nav nav-tabs unit-guests-tabs">
-  <% tabs.each do |tab, label| %>
-    <li class="nav-item">
-      <%= link_to label, unit_guests_path(@unit, tab: (tab unless tab == "ours")),
-            class: class_names("nav-link", active: @tab == tab) %>
-    </li>
+<div class="unit-guest-stats__periods">
+  <span>Rankings over:</span>
+  <ul class="nav nav-pills">
+    <% UnitGuestStats::PERIODS.each do |days| %>
+      <li class="nav-item">
+        <%= link_to "#{days} days", unit_guests_path(@guest_stats.unit, period: days),
+              class: class_names("nav-link", active: @period == days) %>
+      </li>
+    <% end %>
+  </ul>
+</div>
+
+<div class="row">
+  <div class="col-md-5">
+    <h4 class="unit-guest-stats__heading">Top guesters</h4>
+    <table class="table table-striped unit-guests unit-guest-stats__guesters">
+      <thead>
+        <tr>
+          <th scope="col">Member</th>
+          <th class="unit-guests__count-col" scope="col">Drills</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% @guest_stats.top_guesters.each do |guester| %>
+        <tr>
+          <td><%= link_to guester.user, user_attendance_path(guester.user, filter: "guested") %></td>
+          <td class="unit-guests__count-col"><%= guester.count %></td>
+        </tr>
+      <% end %>
+      <% if @guest_stats.top_guesters.empty? %>
+        <tr>
+          <td colspan="2" class="text-muted">No guesting in the last <%= @period %> days.</td>
+        </tr>
+      <% end %>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="col-md-7">
+    <h4 class="unit-guest-stats__heading">Guests hosted, by unit</h4>
+    <table class="table table-striped unit-guests unit-guest-stats__hosts">
+      <thead>
+        <tr>
+          <th scope="col">Unit</th>
+          <th class="unit-guests__count-col" scope="col">Per drill</th>
+          <th class="unit-guests__count-col" scope="col">Guests</th>
+          <th class="unit-guests__count-col" scope="col">Drills</th>
+        </tr>
+      </thead>
+      <tbody>
+      <% @guest_stats.hosts.each do |host| %>
+        <tr>
+          <td><%= link_to host.unit.abbr, unit_guests_path(host.unit) %></td>
+          <td class="<%= class_names("unit-guests__count-col", "text-muted": host.guests.zero?) %>">
+            <%= number_with_precision(host.per_drill, precision: 1) %>
+          </td>
+          <td class="<%= class_names("unit-guests__count-col", "text-muted": host.guests.zero?) %>"><%= host.guests %></td>
+          <td class="unit-guests__count-col"><%= host.drills %></td>
+        </tr>
+      <% end %>
+      <% if @guest_stats.hosts.empty? %>
+        <tr>
+          <td colspan="4" class="text-muted">No drills in the last <%= @period %> days.</td>
+        </tr>
+      <% end %>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<h4 class="unit-guest-stats__heading">Drills guested, by unit</h4>
+
+<table class="table table-striped unit-guests unit-guest-stats__by-unit">
+  <thead>
+    <tr>
+      <th scope="col">Unit</th>
+      <th class="unit-guests__count-col" scope="col">Members</th>
+      <% UnitGuestStats::PERIODS.each do |days| %>
+        <th class="unit-guests__count-col" scope="col">Last <%= days %> days</th>
+      <% end %>
+    </tr>
+  </thead>
+  <tbody>
+  <% @guest_stats.unit_rows.each do |row| %>
+    <tr>
+      <td><%= link_to row.unit.abbr, unit_guests_path(row.unit) %></td>
+      <td class="unit-guests__count-col"><%= row.members %></td>
+      <% row.guested.each_value do |count| %>
+        <td class="<%= class_names("unit-guests__count-col", "text-muted": count.zero?) %>"><%= count %></td>
+      <% end %>
+    </tr>
   <% end %>
-</ul>
-
-<% if @tab == "stats" %>
-  <%= render "guest_stats", stats: @guest_stats, period: @period %>
-<% elsif @tab == "ours" %>
-  <%= render "guest_counts", counts: @guest_counts %>
-
-  <table class="table table-striped unit-guests">
-    <thead>
-      <tr>
-        <th scope="col">Date</th>
-        <th scope="col">Event</th>
-        <th class="unit-guests__count-col" scope="col">Guests</th>
-      </tr>
-    </thead>
-    <tbody>
-    <% @events.each do |event| %>
-      <% guest_count = @guests_by_event.fetch(event.id, 0) %>
-      <tr>
-        <td><%= timestamp_tag event.starts_at %></td>
-        <td><%= link_to event.title, event %></td>
-        <td class="<%= class_names("unit-guests__count-col", "text-muted": guest_count.zero?) %>">
-          <%= guest_count %>
-        </td>
-      </tr>
-    <% end %>
-    </tbody>
-  </table>
-
-  <%= paginate @events %>
-<% else %>
-  <%= render "guest_counts", counts: @guest_counts %>
-
-  <table class="table table-striped unit-guests">
-    <thead>
-      <tr>
-        <th scope="col">Member</th>
-        <th class="unit-guests__count-col" scope="col">Last 30 days</th>
-        <th class="unit-guests__count-col" scope="col">Last 60 days</th>
-        <th class="unit-guests__count-col" scope="col">Last 90 days</th>
-        <th class="unit-guests__count-col" scope="col">Total</th>
-      </tr>
-    </thead>
-    <tbody>
-    <% @member_counts.each do |user, member_counts| %>
-      <tr>
-        <td><%= link_to user, user_attendance_path(user, filter: "guested") %></td>
-        <% [member_counts.last_30_days, member_counts.last_60_days,
-            member_counts.last_90_days, member_counts.total].each do |count| %>
-          <td class="<%= class_names("unit-guests__count-col", "text-muted": count.zero?) %>"><%= count %></td>
-        <% end %>
-      </tr>
-    <% end %>
-    <% if @member_counts.empty? %>
-      <tr>
-        <td colspan="5" class="text-muted">No members have guested at other drills.</td>
-      </tr>
-    <% end %>
-    </tbody>
-  </table>
-<% end %>
+  </tbody>
+  <tfoot>
+    <tr class="unit-guest-stats__total">
+      <th scope="row"><%= @guest_stats.unit.subtree_abbr %> total</th>
+      <td class="unit-guests__count-col"><%= @guest_stats.total_row.members %></td>
+      <% @guest_stats.total_row.guested.each_value do |count| %>
+        <td class="unit-guests__count-col"><%= count %></td>
+      <% end %>
+    </tr>
+  </tfoot>
+</table>

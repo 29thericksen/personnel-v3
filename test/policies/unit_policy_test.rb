@@ -14,13 +14,13 @@ class UnitPolicyTest < ActiveSupport::TestCase
     create(:assignment, user: member, unit: create(:unit, classification: :combat))
     non_member = create(:user)
 
-    %i[attendance guests awols stats recruits discharges].each do |action|
+    %i[attendance awols stats recruits discharges].each do |action|
       assert_permit member, unit, action
       refute_permit non_member, unit, action
     end
   end
 
-  test "guest_stats permits leaders on the units they're responsible for" do
+  test "guests permits members on their own unit and leaders on the units they lead" do
     company = create(:unit, abbr: "Charlie Co. HQ")
     cp1 = create(:unit, abbr: "CP1 HQ", parent: company)
     cp1s1 = create(:unit, abbr: "CP1S1", parent: cp1)
@@ -38,20 +38,21 @@ class UnitPolicyTest < ActiveSupport::TestCase
     rifleman = create(:user)
     create(:assignment, user: rifleman, unit: cp1s1)
 
-    assert_permit squad_leader, cp1s1, :guest_stats
-    [cp1s2, cp1, company].each { |unit| refute_permit squad_leader, unit, :guest_stats }
+    assert_permit squad_leader, cp1s1, :guests
+    [cp1s2, cp1, company].each { |unit| refute_permit squad_leader, unit, :guests }
 
-    [cp1, cp1s1, cp1s2].each { |unit| assert_permit platoon_leader, unit, :guest_stats }
-    [cp2, company].each { |unit| refute_permit platoon_leader, unit, :guest_stats }
+    [cp1, cp1s1, cp1s2].each { |unit| assert_permit platoon_leader, unit, :guests }
+    [cp2, company].each { |unit| refute_permit platoon_leader, unit, :guests }
 
-    [company, cp1, cp1s2, cp2].each { |unit| assert_permit company_leader, unit, :guest_stats }
-    refute_permit company_leader, other_company, :guest_stats
+    [company, cp1, cp1s2, cp2].each { |unit| assert_permit company_leader, unit, :guests }
+    refute_permit company_leader, other_company, :guests
 
-    refute_permit rifleman, cp1s1, :guest_stats
-    refute_permit nil, cp1s1, :guest_stats
+    assert_permit rifleman, cp1s1, :guests
+    [cp1s2, cp1, company].each { |unit| refute_permit rifleman, unit, :guests }
+    refute_permit nil, cp1s1, :guests
   end
 
-  test "guest_stats permits MPs and admins on every unit" do
+  test "guests permits MPs and admins on every unit" do
     unit = create(:unit, abbr: "Dog Co. HQ")
 
     {"note_view_mp" => "MP", "admin" => "S1"}.each do |abbr, unit_abbr|
@@ -60,7 +61,7 @@ class UnitPolicyTest < ActiveSupport::TestCase
       create(:permission, abbr: abbr, unit: user_unit)
       create(:assignment, user: user, unit: user_unit)
 
-      assert_permit user, unit, :guest_stats
+      assert_permit user, unit, :guests
     end
   end
 

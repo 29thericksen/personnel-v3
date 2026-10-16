@@ -41,84 +41,43 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
-  test "guests lists the unit's past events with guest counts" do
-    busy = create(:event, unit: @squad, starts_at: 1.week.ago)
-    quiet = create(:event, unit: @squad, starts_at: 2.weeks.ago)
-    create(:event, unit: @squad, starts_at: 1.week.from_now)
-    create_list(:event_guest, 2, event: busy)
-
+  test "guests is open to members on their own unit only" do
     sign_in_as @member
-    get unit_guests_url(@company)
+    get unit_guests_url(@squad)
 
     assert_response :success
-    assert_select "nav a[href=?]", unit_guests_path(@company), text: "Guests"
-    assert_select ".unit-guests-tabs .nav-link.active", text: "Guests at our drills"
-    assert_select ".unit-guests-tabs .badge", 0
-    assert_select ".user-attendance-stats dd", text: "2", count: 4
-    assert_select "tbody tr", 2
-    assert_equal %w[2 0], css_select("tbody td.unit-guests__count-col").map { |td| td.text.strip }
-    assert_select "a[href=?]", event_path(busy)
-    assert_select "a[href=?]", event_path(quiet)
-  end
+    assert_select "nav a[href=?]", unit_guests_path(@squad), text: "Guests"
+    assert_select "h2", text: "Guests"
 
-  test "guests elsewhere tab counts members guesting at other units' events" do
-    other_unit = create(:unit, abbr: "Baker Co. HQ")
-    [5.days.ago, 45.days.ago, 100.days.ago].each do |starts_at|
-      create(:event_guest, user: @member, event: create(:event, unit: other_unit, starts_at:))
-    end
-    create(:event_guest, event: create(:event, unit: other_unit, starts_at: 5.days.ago))
-
-    sign_in_as @member
-    get unit_guests_url(@company, tab: "elsewhere")
-
-    assert_response :success
-    assert_select ".unit-guests-tabs .nav-link.active", text: "Our members guesting elsewhere"
-    assert_equal %w[1 2 2 3], css_select(".user-attendance-stats dd").map { |dd| dd.text.strip }
-    assert_select "tbody tr", 1
-    assert_select "a[href=?]", user_attendance_path(@member, filter: "guested"), text: @member.short_name
-    assert_equal %w[1 2 2 3], css_select("tbody td.unit-guests__count-col").map { |td| td.text.strip }
-  end
-
-  test "guests counts guesting between sub-units on the parent's page" do
-    sister = create(:unit, parent: @company, abbr: "Able 1-2")
-    create(:event_guest, user: @member, event: create(:event, unit: sister, starts_at: 3.days.ago))
-
-    sign_in_as @member
     get unit_guests_url(@company)
-    assert_select ".user-attendance-stats dd", text: "1", count: 4
-
-    get unit_guests_url(@company, tab: "elsewhere")
-    assert_select ".user-attendance-stats dd", text: "1", count: 4
-  end
-
-  test "guests elsewhere tab without guesting shows an empty state" do
-    sign_in_as @member
-    get unit_guests_url(@company, tab: "elsewhere")
-
-    assert_response :success
-    assert_match "No members have guested at other drills.", response.body
-  end
-
-  test "guest stats tab is only for the unit's leadership" do
-    sign_in_as @member
-    get unit_guests_url(@company)
-    assert_select ".unit-guests-tabs .nav-link", text: "Guest stats", count: 0
-
-    get unit_guests_url(@company, tab: "stats")
     assert_redirected_to root_url
 
+    get unit_url(@company)
+    assert_select "nav a[href=?]", unit_guests_path(@company), count: 0
+  end
+
+  test "guests is open to leaders on the units they're responsible for" do
     squad_leader = create(:user)
     create(:permission, abbr: "note_view_sq", unit: @squad)
     create(:assignment, user: squad_leader, unit: @squad)
+    hq_leader = create(:user)
+    create(:permission, abbr: "note_view_co", unit: @company)
+    create(:assignment, user: hq_leader, unit: @company)
 
     sign_in_as squad_leader
-    get unit_guests_url(@squad, tab: "stats")
+    get unit_guests_url(@squad)
     assert_response :success
     get unit_guests_url(@company)
-    assert_select ".unit-guests-tabs .nav-link", text: "Guest stats", count: 0
+    assert_redirected_to root_url
+
+    sign_in_as hq_leader
+    get unit_guests_url(@squad)
+    assert_response :success
+    get unit_guests_url(@company)
+    assert_response :success
   end
 
-  test "guest stats breaks down guesting by unit and ranks guesters and hosts" do
+  test "guests breaks down guesting by unit and ranks guesters and hosts" do
     leader = create(:user)
     leader_unit = create(:unit, abbr: "MP")
     create(:permission, abbr: "note_view_mp", unit: leader_unit)
@@ -137,29 +96,25 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     create(:event_guest, event: create(:event, unit: @squad, starts_at: 5.days.ago))
 
     sign_in_as leader
-    get unit_guests_url(@company, tab: "stats")
+    get unit_guests_url(@company)
 
     assert_response :success
-    assert_select ".unit-guests-tabs .nav-link.active", text: "Guest stats"
     assert_equal [%w[Able\ 1-1 1 1 2 2], %w[Able\ 1-2 1 0 0 0]], table_rows(".unit-guest-stats__by-unit")
     assert_equal %w[2 1 2 2], css_select(".unit-guest-stats__by-unit tfoot td").map { |td| td.text.strip }
 
     assert_equal [[@member.short_name, "2"]], table_rows(".unit-guest-stats__guesters")
     assert_equal [%w[Able\ 1-1 1.0 1 1], %w[Able\ 1-2 0.5 1 2]], table_rows(".unit-guest-stats__hosts")
 
-    get unit_guests_url(@company, tab: "stats", period: 30)
+    get unit_guests_url(@company, period: 30)
 
     assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
   end
 
-  test "guest stats with no guesting shows empty states and every host" do
-    leader = create(:user)
-    create(:permission, abbr: "note_view_pl", unit: @company)
-    create(:assignment, user: leader, unit: @company)
+  test "guests with no guesting shows empty states and every host" do
     create(:event, unit: @squad, starts_at: 5.days.ago)
 
-    sign_in_as leader
-    get unit_guests_url(@company, tab: "stats")
+    sign_in_as @member
+    get unit_guests_url(@squad)
 
     assert_equal [["No guesting in the last 90 days."]], table_rows(".unit-guest-stats__guesters")
     assert_equal [%w[Able\ 1-1 0.0 0 1]], table_rows(".unit-guest-stats__hosts")
