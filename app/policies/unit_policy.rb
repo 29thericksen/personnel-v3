@@ -15,12 +15,15 @@ class UnitPolicy < ApplicationPolicy
     user&.member?
   end
 
-  # Platoon HQ or higher, on any unit
+  # Leaders see the units they're responsible for: a squad's leadership its
+  # squad, a platoon HQ its platoon and squads, a company HQ its company.
+  # MPs and admins see every unit.
   def guest_stats?
     return false unless guests?
+    return true if user.has_permission?("admin") || user.has_permission?("note_view_mp")
 
-    %w[note_view_pl note_view_co note_view_mp admin].any? do |permission|
-      user.has_permission?(permission)
+    %w[note_view_sq note_view_pl note_view_co].any? do |permission|
+      user.has_permission_on_unit?(permission, record)
     end
   end
 

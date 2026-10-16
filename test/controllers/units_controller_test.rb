@@ -99,19 +99,29 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_match "No members have guested at other drills.", response.body
   end
 
-  test "guest stats tab is only for platoon HQ or higher" do
+  test "guest stats tab is only for the unit's leadership" do
     sign_in_as @member
     get unit_guests_url(@company)
     assert_select ".unit-guests-tabs .nav-link", text: "Guest stats", count: 0
 
     get unit_guests_url(@company, tab: "stats")
     assert_redirected_to root_url
+
+    squad_leader = create(:user)
+    create(:permission, abbr: "note_view_sq", unit: @squad)
+    create(:assignment, user: squad_leader, unit: @squad)
+
+    sign_in_as squad_leader
+    get unit_guests_url(@squad, tab: "stats")
+    assert_response :success
+    get unit_guests_url(@company)
+    assert_select ".unit-guests-tabs .nav-link", text: "Guest stats", count: 0
   end
 
   test "guest stats breaks down guesting by unit and ranks guesters and hosts" do
     leader = create(:user)
-    leader_unit = create(:unit, abbr: "Baker Co. HQ")
-    create(:permission, abbr: "note_view_co", unit: leader_unit)
+    leader_unit = create(:unit, abbr: "MP")
+    create(:permission, abbr: "note_view_mp", unit: leader_unit)
     create(:assignment, user: leader, unit: leader_unit)
 
     sister = create(:unit, parent: @company, abbr: "Able 1-2")

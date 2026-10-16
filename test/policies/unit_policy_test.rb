@@ -20,22 +20,48 @@ class UnitPolicyTest < ActiveSupport::TestCase
     end
   end
 
-  test "guest_stats permits platoon HQ or higher on any unit" do
-    unit = create(:unit)
+  test "guest_stats permits leaders on the units they're responsible for" do
+    company = create(:unit, abbr: "Charlie Co. HQ")
+    cp1 = create(:unit, abbr: "CP1 HQ", parent: company)
+    cp1s1 = create(:unit, abbr: "CP1S1", parent: cp1)
+    cp1s2 = create(:unit, abbr: "CP1S2", parent: cp1)
+    cp2 = create(:unit, abbr: "CP2 HQ", parent: company)
+    other_company = create(:unit, abbr: "Dog Co. HQ")
 
-    platoon_leader = create(:user)
-    platoon = create(:unit, abbr: "CP1 HQ")
-    create(:permission, abbr: "note_view_pl", unit: platoon)
-    create(:assignment, user: platoon_leader, unit: platoon)
+    leader_of = ->(unit, abbr) do
+      create(:permission, :leader, abbr: abbr, unit: unit)
+      create(:user).tap { |user| create(:assignment, :leader, user: user, unit: unit) }
+    end
+    squad_leader = leader_of.call(cp1s1, "note_view_sq")
+    platoon_leader = leader_of.call(cp1, "note_view_pl")
+    company_leader = leader_of.call(company, "note_view_co")
+    rifleman = create(:user)
+    create(:assignment, user: rifleman, unit: cp1s1)
 
-    squad_leader = create(:user)
-    squad = create(:unit, abbr: "CP1S1")
-    create(:permission, abbr: "note_view_sq", unit: squad)
-    create(:assignment, user: squad_leader, unit: squad)
+    assert_permit squad_leader, cp1s1, :guest_stats
+    [cp1s2, cp1, company].each { |unit| refute_permit squad_leader, unit, :guest_stats }
 
-    assert_permit platoon_leader, unit, :guest_stats
-    refute_permit squad_leader, unit, :guest_stats
-    refute_permit nil, unit, :guest_stats
+    [cp1, cp1s1, cp1s2].each { |unit| assert_permit platoon_leader, unit, :guest_stats }
+    [cp2, company].each { |unit| refute_permit platoon_leader, unit, :guest_stats }
+
+    [company, cp1, cp1s2, cp2].each { |unit| assert_permit company_leader, unit, :guest_stats }
+    refute_permit company_leader, other_company, :guest_stats
+
+    refute_permit rifleman, cp1s1, :guest_stats
+    refute_permit nil, cp1s1, :guest_stats
+  end
+
+  test "guest_stats permits MPs and admins on every unit" do
+    unit = create(:unit, abbr: "Dog Co. HQ")
+
+    {"note_view_mp" => "MP", "admin" => "S1"}.each do |abbr, unit_abbr|
+      user = create(:user)
+      user_unit = create(:unit, abbr: unit_abbr)
+      create(:permission, abbr: abbr, unit: user_unit)
+      create(:assignment, user: user, unit: user_unit)
+
+      assert_permit user, unit, :guest_stats
+    end
   end
 
   test "missing_awards permits user with awarding_add on the unit or its subtree" do
