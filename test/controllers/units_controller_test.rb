@@ -52,7 +52,8 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "nav a[href=?]", unit_guests_path(@company), text: "Guests"
-    assert_select ".unit-guests-tabs .nav-link.active", text: /Guests at our drills\s+2/
+    assert_select ".unit-guests-tabs .nav-link.active", text: "Guests at our drills"
+    assert_select ".unit-guests-tabs .badge", 0
     assert_select ".user-attendance-stats dd", text: "2", count: 4
     assert_select "tbody tr", 2
     assert_equal %w[2 0], css_select("tbody td.unit-guests__count-col").map { |td| td.text.strip }
@@ -71,7 +72,8 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     get unit_guests_url(@company, tab: "elsewhere")
 
     assert_response :success
-    assert_select ".unit-guests-tabs .nav-link.active", text: /Our members guesting elsewhere\s+3/
+    assert_select ".unit-guests-tabs .nav-link.active", text: "Our members guesting elsewhere"
+    assert_equal %w[1 2 2 3], css_select(".user-attendance-stats dd").map { |dd| dd.text.strip }
     assert_select "tbody tr", 1
     assert_select "a[href=?]", user_attendance_path(@member, filter: "guested"), text: @member.short_name
     assert_equal %w[1 2 2 3], css_select("tbody td.unit-guests__count-col").map { |td| td.text.strip }
@@ -83,9 +85,10 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
 
     sign_in_as @member
     get unit_guests_url(@company)
+    assert_select ".user-attendance-stats dd", text: "1", count: 4
 
-    assert_select ".unit-guests-tabs .nav-link", text: /Guests at our drills\s+1/
-    assert_select ".unit-guests-tabs .nav-link", text: /Our members guesting elsewhere\s+1/
+    get unit_guests_url(@company, tab: "elsewhere")
+    assert_select ".user-attendance-stats dd", text: "1", count: 4
   end
 
   test "guests elsewhere tab without guesting shows an empty state" do

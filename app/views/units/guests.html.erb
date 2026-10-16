@@ -7,13 +7,8 @@
 <ul class="nav nav-tabs unit-guests-tabs">
   <% tabs.each do |tab, label| %>
     <li class="nav-item">
-      <%= link_to unit_guests_path(@unit, tab: (tab unless tab == "ours")),
-            class: class_names("nav-link", active: @tab == tab) do %>
-        <%= label %>
-        <% if @guest_counts.key?(tab) %>
-          <span class="badge badge-light"><%= @guest_counts[tab].total %></span>
-        <% end %>
-      <% end %>
+      <%= link_to label, unit_guests_path(@unit, tab: (tab unless tab == "ours")),
+            class: class_names("nav-link", active: @tab == tab) %>
     </li>
   <% end %>
 </ul>
@@ -21,7 +16,7 @@
 <% if @tab == "stats" %>
   <%= render "guest_stats", stats: @guest_stats, period: @period %>
 <% elsif @tab == "ours" %>
-  <%= render "guest_counts", counts: @guest_counts[@tab] %>
+  <%= render "guest_counts", counts: @guest_counts %>
 
   <table class="table table-striped unit-guests">
     <thead>
@@ -47,7 +42,7 @@
 
   <%= paginate @events %>
 <% else %>
-  <%= render "guest_counts", counts: @guest_counts[@tab] %>
+  <%= render "guest_counts", counts: @guest_counts %>
 
   <table class="table table-striped unit-guests">
     <thead>

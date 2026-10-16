@@ -29,15 +29,9 @@ class UnitsController < ApplicationController
     @tab = GUEST_TABS.include?(params[:tab]) ? params[:tab] : "ours"
     authorize @unit, :guest_stats? if @tab == "stats"
 
-    hosted_guests = EventGuest.where(event: Event.for_unit(@unit.subtree)) # include inactive units
-    member_guests = EventGuest.where(member_id: @unit.subtree_users.active.select(:id))
-
-    @guest_counts = {
-      "ours" => hosted_guests.period_counts.take,
-      "elsewhere" => member_guests.period_counts.take
-    }
-
     if @tab == "ours"
+      hosted_guests = EventGuest.where(event: Event.for_unit(@unit.subtree)) # include inactive units
+      @guest_counts = hosted_guests.period_counts.take
       @events = Event.for_unit(@unit.subtree)
         .past
         .includes(:unit)
@@ -50,6 +44,8 @@ class UnitsController < ApplicationController
       @period = UnitGuestStats::PERIODS.include?(period) ? period : UnitGuestStats::PERIODS.max
       @guest_stats = UnitGuestStats.new(@unit, period: @period)
     else
+      member_guests = EventGuest.where(member_id: @unit.subtree_users.active.select(:id))
+      @guest_counts = member_guests.period_counts.take
       counts = member_guests.period_counts
         .select(:member_id)
         .group(:member_id)
