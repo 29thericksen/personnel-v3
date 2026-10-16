@@ -19,6 +19,41 @@ class UnitsController < ApplicationController
     @attendance_stats = @unit.attendance_stats
   end
 
+  # "ours" lists the unit's events with how many guests joined each;
+  # "elsewhere" counts the events the unit's members joined as guests.
+  # Guesting between sub-units counts in both.
+  GUEST_TABS = %w[ours elsewhere].freeze
+
+  def guests
+    @tab = GUEST_TABS.include?(params[:tab]) ? params[:tab] : "ours"
+
+    hosted_guests = EventGuest.where(event: Event.for_unit(@unit.subtree)) # include inactive units
+    member_guests = EventGuest.where(member_id: @unit.subtree_users.active.select(:id))
+
+    @guest_counts = {
+      "ours" => hosted_guests.period_counts.take,
+      "elsewhere" => member_guests.period_counts.take
+    }
+
+    if @tab == "ours"
+      @events = Event.for_unit(@unit.subtree)
+        .past
+        .includes(:unit)
+        .desc
+        .select(:id, :unit_id, :starts_at, :time_zone, :type)
+        .page(params[:page])
+      @guests_by_event = EventGuest.where(event_id: @events.map(&:id)).group(:event_id).count
+    else
+      counts = member_guests.period_counts
+        .select(:member_id)
+        .group(:member_id)
+      users = User.where(id: counts.map(&:member_id)).includes(:rank).index_by(&:id)
+      @member_counts = counts
+        .map { |count| [users[count.member_id], count] }
+        .sort_by { |user, count| [-count.total, -user.rank.order, user.last_name] }
+    end
+  end
+
   def awols
     @awols_by_user = AttendanceRecord.by_unit(@unit.subtree)
       .awol

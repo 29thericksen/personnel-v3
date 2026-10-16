@@ -41,6 +41,61 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_response :success
   end
 
+  test "guests lists the unit's past events with guest counts" do
+    busy = create(:event, unit: @squad, starts_at: 1.week.ago)
+    quiet = create(:event, unit: @squad, starts_at: 2.weeks.ago)
+    create(:event, unit: @squad, starts_at: 1.week.from_now)
+    create_list(:event_guest, 2, event: busy)
+
+    sign_in_as @member
+    get unit_guests_url(@company)
+
+    assert_response :success
+    assert_select "nav a[href=?]", unit_guests_path(@company), text: "Guests"
+    assert_select ".unit-guests-tabs .nav-link.active", text: /Guests at our drills\s+2/
+    assert_select ".user-attendance-stats dd", text: "2", count: 4
+    assert_select "tbody tr", 2
+    assert_equal %w[2 0], css_select("tbody td.unit-guests__count-col").map { |td| td.text.strip }
+    assert_select "a[href=?]", event_path(busy)
+    assert_select "a[href=?]", event_path(quiet)
+  end
+
+  test "guests elsewhere tab counts members guesting at other units' events" do
+    other_unit = create(:unit, abbr: "Baker Co. HQ")
+    [5.days.ago, 45.days.ago, 100.days.ago].each do |starts_at|
+      create(:event_guest, user: @member, event: create(:event, unit: other_unit, starts_at:))
+    end
+    create(:event_guest, event: create(:event, unit: other_unit, starts_at: 5.days.ago))
+
+    sign_in_as @member
+    get unit_guests_url(@company, tab: "elsewhere")
+
+    assert_response :success
+    assert_select ".unit-guests-tabs .nav-link.active", text: /Our members guesting elsewhere\s+3/
+    assert_select "tbody tr", 1
+    assert_select "a[href=?]", user_attendance_path(@member, filter: "guested"), text: @member.short_name
+    assert_equal %w[1 2 2 3], css_select("tbody td.unit-guests__count-col").map { |td| td.text.strip }
+  end
+
+  test "guests counts guesting between sub-units on the parent's page" do
+    sister = create(:unit, parent: @company, abbr: "Able 1-2")
+    create(:event_guest, user: @member, event: create(:event, unit: sister, starts_at: 3.days.ago))
+
+    sign_in_as @member
+    get unit_guests_url(@company)
+
+    assert_select ".unit-guests-tabs .nav-link", text: /Guests at our drills\s+1/
+    assert_select ".unit-guests-tabs .nav-link", text: /Our members guesting elsewhere\s+1/
+  end
+
+  test "guests elsewhere tab without guesting shows an empty state" do
+    sign_in_as @member
+    get unit_guests_url(@company, tab: "elsewhere")
+
+    assert_response :success
+    assert_match "No members have guested at other drills.", response.body
+  end
+
   test "awols groups recent awols by user" do
     event = create(:event, unit: @squad, mandatory: true, starts_at: 1.week.ago)
     create(:attendance_record, user: @member, event: event,

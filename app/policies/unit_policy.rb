@@ -11,6 +11,10 @@ class UnitPolicy < ApplicationPolicy
     user&.member?
   end
 
+  def guests?
+    user&.member?
+  end
+
   def awols?
     user&.member?
   end

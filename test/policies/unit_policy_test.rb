@@ -14,7 +14,7 @@ class UnitPolicyTest < ActiveSupport::TestCase
     create(:assignment, user: member, unit: create(:unit, classification: :combat))
     non_member = create(:user)
 
-    %i[attendance awols stats recruits discharges].each do |action|
+    %i[attendance guests awols stats recruits discharges].each do |action|
       assert_permit member, unit, action
       refute_permit non_member, unit, action
     end

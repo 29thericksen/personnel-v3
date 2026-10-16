@@ -1,0 +1,84 @@
+<% content_for(:page_title) { "#{@unit.subtree_abbr} - Guests" } %>
+
+<h2>Guests</h2>
+
+<ul class="nav nav-tabs unit-guests-tabs">
+  <% {"ours" => "Guests at our drills", "elsewhere" => "Our members guesting elsewhere"}.each do |tab, label| %>
+    <li class="nav-item">
+      <%= link_to unit_guests_path(@unit, tab: (tab unless tab == "ours")),
+            class: class_names("nav-link", active: @tab == tab) do %>
+        <%= label %>
+        <span class="badge badge-light"><%= @guest_counts[tab].total %></span>
+      <% end %>
+    </li>
+  <% end %>
+</ul>
+
+<% counts = @guest_counts[@tab] %>
+<dl class="user-attendance-stats">
+  <dt>Last 30 days:</dt>
+  <dd><%= counts.last_30_days %></dd>
+
+  <dt>Last 60 days:</dt>
+  <dd><%= counts.last_60_days %></dd>
+
+  <dt>Last 90 days:</dt>
+  <dd><%= counts.last_90_days %></dd>
+
+  <dt>Total:</dt>
+  <dd><%= counts.total %></dd>
+</dl>
+
+<% if @tab == "ours" %>
+  <table class="table table-striped unit-guests">
+    <thead>
+      <tr>
+        <th scope="col">Date</th>
+        <th scope="col">Event</th>
+        <th class="unit-guests__count-col" scope="col">Guests</th>
+      </tr>
+    </thead>
+    <tbody>
+    <% @events.each do |event| %>
+      <% guest_count = @guests_by_event.fetch(event.id, 0) %>
+      <tr>
+        <td><%= timestamp_tag event.starts_at %></td>
+        <td><%= link_to event.title, event %></td>
+        <td class="<%= class_names("unit-guests__count-col", "text-muted": guest_count.zero?) %>">
+          <%= guest_count %>
+        </td>
+      </tr>
+    <% end %>
+    </tbody>
+  </table>
+
+  <%= paginate @events %>
+<% else %>
+  <table class="table table-striped unit-guests">
+    <thead>
+      <tr>
+        <th scope="col">Member</th>
+        <th class="unit-guests__count-col" scope="col">Last 30 days</th>
+        <th class="unit-guests__count-col" scope="col">Last 60 days</th>
+        <th class="unit-guests__count-col" scope="col">Last 90 days</th>
+        <th class="unit-guests__count-col" scope="col">Total</th>
+      </tr>
+    </thead>
+    <tbody>
+    <% @member_counts.each do |user, member_counts| %>
+      <tr>
+        <td><%= link_to user, user_attendance_path(user, filter: "guested") %></td>
+        <% [member_counts.last_30_days, member_counts.last_60_days,
+            member_counts.last_90_days, member_counts.total].each do |count| %>
+          <td class="<%= class_names("unit-guests__count-col", "text-muted": count.zero?) %>"><%= count %></td>
+        <% end %>
+      </tr>
+    <% end %>
+    <% if @member_counts.empty? %>
+      <tr>
+        <td colspan="5" class="text-muted">No members have guested at other drills.</td>
+      </tr>
+    <% end %>
+    </tbody>
+  </table>
+<% end %>
