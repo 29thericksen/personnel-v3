@@ -51,16 +51,23 @@ class EventsController < ApplicationController
     @event.reporter = current_user unless @event.aar_posted?
 
     attended_ids = params[:event][:user_ids].reject(&:empty?).map(&:to_i)
-    @event.update_attendance(attended_ids)
-    @event.excuse_users_on_extended_loa
 
-    # Only touch guests when the form sent the field, so requests without it
-    # leave existing guests alone.
-    if params[:event].key?(:guest_ids)
-      @event.update_guests(Array(params[:event][:guest_ids]))
+    # One transaction, so a failed save leaves attendance and guests untouched
+    # rather than half-written.
+    saved = Event.transaction do
+      @event.update_attendance(attended_ids)
+      @event.excuse_users_on_extended_loa
+
+      # Only touch guests when the form sent the field, so requests without
+      # it leave existing guests alone.
+      if params[:event].key?(:guest_ids)
+        @event.update_guests(Array(params[:event][:guest_ids]))
+      end
+
+      @event.save || raise(ActiveRecord::Rollback)
     end
 
-    if @event.save
+    if saved
       redirect_to @event, notice: "AAR was successfully updated."
     else
       @attended_user_ids = @event.attendance_records.where(attended: true).pluck(:member_id)

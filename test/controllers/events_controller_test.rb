@@ -346,6 +346,20 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     end
   end
 
+  test "aar should save nothing when the event fails to save" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    guest = create(:user)
+    Event.any_instance.stubs(:save).returns(false)
+
+    params = {event: {report: "Report", user_ids: ["", @user.id.to_s], guest_ids: ["", guest.id.to_s]}}
+    assert_no_difference(["AttendanceRecord.count", "EventGuest.count", "Audited::Audit.count"]) do
+      patch aar_event_url(event), params: params
+    end
+
+    assert_response :success, "Expected the form to re-render"
+  end
+
   test "guest search should return matching members as json" do
     sign_in_as @user
     event = create(:event, unit: @unit)
