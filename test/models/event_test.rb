@@ -96,16 +96,42 @@ class EventTest < ActiveSupport::TestCase
     assert_equal [guest.id], event.guests.reload.map(&:id)
   end
 
-  test "update_guests audits additions and removals" do
+  test "update_guests records the change as one audit on the event" do
     event = create(:event)
-    removed, added = create_list(:user, 2)
+    kept, removed, added = create_list(:user, 3)
+    create(:event_guest, event: event, user: kept)
     create(:event_guest, event: event, user: removed)
 
-    guest_audits = Audited::Audit.where(auditable_type: "EventGuest", associated: event)
-    assert_difference(-> { guest_audits.where(action: "destroy").count } => 1,
-      -> { guest_audits.where(action: "create").count } => 1) do
-      event.update_guests([added.id.to_s])
+    assert_difference(-> { event.audits.count } => 1,
+      -> { Audited::Audit.where(auditable_type: "EventGuest").count } => 0) do
+      event.update_guests([kept.id, added.id].map(&:to_s))
     end
+
+    audit = event.audits.last
+    assert_equal [[kept.id, removed.id].sort, [kept.id, added.id].sort], audit.audited_changes["guest_ids"]
+    assert_equal "Guests: 1 added, 1 removed", audit.comment
+  end
+
+  test "update_guests writes nothing when the guest list hasn't changed" do
+    event = create(:event)
+    guest = create(:user)
+    create(:event_guest, event: event, user: guest)
+
+    assert_no_difference(-> { event.audits.count }) do
+      assert_queries_match(/\A\s*(INSERT|UPDATE|DELETE)/i, count: 0) do
+        event.update_guests([guest.id.to_s])
+      end
+    end
+  end
+
+  test "update_guests adds any number of guests with a single insert" do
+    event = create(:event)
+    guests = create_list(:user, 15)
+
+    assert_queries_match(/INSERT INTO `event_guests`/, count: 1) do
+      event.update_guests(guests.map { |guest| guest.id.to_s })
+    end
+    assert_equal 15, event.guests.reload.size
   end
 
   test "guest_candidates finds current and former members outside the event" do
