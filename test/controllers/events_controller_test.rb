@@ -423,6 +423,23 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
     assert_select "h4", text: "Attendance"
     assert_select ".aar .attendance-overview .attendance-summary", {text: /1 of 2 attended\s+· 0 excused\s+· 1 AWOL/},
       "Expected the totals above the AAR"
+    assert_select ".attendance-summary-guests", text: "0 guests"
+  end
+
+  test "attendance summary counts guests and total participants" do
+    sign_in_as @user
+    event = create(:event, unit: @unit)
+    create(:attendance_record, attended: true, event: event, user: @user)
+    absent_user = create(:user)
+    create(:assignment, user: absent_user, unit: @unit)
+    create(:attendance_record, attended: false, excused: false, event: event, user: absent_user)
+    create_list(:event_guest, 2, event: event)
+
+    get event_url(event)
+
+    assert_select ".attendance-summary",
+      text: /1 of 2 attended\s+· 0 excused\s+· 1 absent\s+\|\s+2 guests\s+· 3 total participants/
+    assert_select ".attendance-summary-guests", text: "2 guests"
   end
 
   test "aar form should group expected members by unit and check those who attended" do

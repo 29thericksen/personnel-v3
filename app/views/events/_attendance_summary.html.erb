@@ -1,5 +1,7 @@
-<%# Event-wide totals, shown above the AAR; the grouped list stays in the left column %>
+<%# Event-wide totals, shown above the AAR; the grouped list stays in the left column.
+    Guests sit outside the attendance totals and the bar: they're informational only. %>
 <% entries = roster.entries %>
+<% guests = local_assigns.fetch(:guests, []) %>
 <% if entries.any? %>
   <% counts = roster.counts %>
   <% total = entries.size %>
@@ -12,6 +14,9 @@
         <%= attended %> of <%= total %> attended
         &middot; <%= excused %> excused
         &middot; <%= missed %> <%= roster.event.mandatory ? "AWOL" : "absent" %>
+        <span class="attendance-summary-divider">|</span>
+        <span class="attendance-summary-guests"><%= pluralize(guests.size, "guest") %></span>
+        &middot; <%= attended + guests.size %> total participants
       </p>
       <%= attendance_bar(total, [[attended, "attended"], [excused, "excused"], [missed, "missed"]]) %>
     <% else %>
