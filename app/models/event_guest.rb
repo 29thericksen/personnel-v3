@@ -1,5 +1,6 @@
+# Written in bulk by Event#update_guests, which audits guest changes on the
+# event itself rather than per row.
 class EventGuest < ApplicationRecord
-  audited associated_with: :event
   belongs_to :event
   belongs_to :user, foreign_key: "member_id"
 

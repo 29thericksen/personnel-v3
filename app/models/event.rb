@@ -11,7 +11,7 @@ class Event < ApplicationRecord
   end
   has_many :users, through: :attendance_records
   has_one :attendance_totals, -> { totals_by_event }, class_name: "AttendanceRecord"
-  has_many :event_guests, dependent: :destroy
+  has_many :event_guests, dependent: :delete_all
   has_many :guests, -> { includes(:rank).order("ranks.order DESC", "members.last_name") },
     through: :event_guests, source: :user
 
@@ -57,9 +57,14 @@ class Event < ApplicationRecord
     unit.subtree_users.active(starts_at).includes(:rank)
   end
 
+  # Cached: an AAR save needs these ids for attendance, Extended LOAs and guests.
+  def expected_user_ids
+    @expected_user_ids ||= expected_users.ids
+  end
+
   def extended_loas
     ExtendedLOA.active(starts_at)
-      .where(member_id: expected_users.ids)
+      .where(member_id: expected_user_ids)
   end
 
   def title
@@ -76,12 +81,12 @@ class Event < ApplicationRecord
   end
 
   def update_attendance(attended_user_ids)
-    attendance = expected_users.ids.collect do |user_id|
+    attendance = expected_user_ids.collect do |user_id|
       {event_id: id, member_id: user_id,
        attended: attended_user_ids.include?(user_id)}
     end
 
-    AttendanceRecord.upsert_all(attendance) if expected_users.any?
+    AttendanceRecord.upsert_all(attendance) if attendance.any?
   end
 
   def excuse_users_on_extended_loa
@@ -118,14 +123,27 @@ class Event < ApplicationRecord
   GUEST_SEARCH_LIMIT = 10
 
   # Replaces the guest list, ignoring unknown ids and anyone expected at the
-  # event. Adds and removes records one at a time so both are audited.
+  # event. Writes in bulk (one delete, one insert) and records the change as
+  # a single audit on the event, so the cost doesn't grow with the guest list.
   def update_guests(user_ids)
     ids = user_ids.reject(&:blank?).map(&:to_i).uniq
-    wanted = User.where(id: ids).ids - expected_users.ids
+    wanted = User.where(id: ids).ids - expected_user_ids
+    current = event_guests.pluck(:member_id)
+    added = wanted - current
+    removed = current - wanted
+    return if added.empty? && removed.empty?
 
-    event_guests.where.not(member_id: wanted).destroy_all
-    (wanted - event_guests.pluck(:member_id)).each do |member_id|
-      event_guests.create!(member_id: member_id)
+    transaction do
+      event_guests.where(member_id: removed).delete_all if removed.any?
+      if added.any?
+        now = Time.current
+        EventGuest.insert_all(added.map { |member_id|
+          {event_id: id, member_id: member_id, created_at: now, updated_at: now}
+        })
+      end
+      audits.create!(action: "update",
+        audited_changes: {"guest_ids" => [current.sort, (current - removed + added).sort]},
+        comment: "Guests: #{added.size} added, #{removed.size} removed")
     end
   end
 
@@ -138,7 +156,7 @@ class Event < ApplicationRecord
     pattern = "#{User.sanitize_sql_like(term)}%"
     User.where("members.last_name LIKE ?", pattern)
       .where(id: Assignment.select(:member_id))
-      .where.not(id: expected_users.ids)
+      .where.not(id: expected_user_ids)
       .joins(:rank)
       .preload(:rank, :discharges, active_assignments: :unit)
       .order("ranks.order DESC", "members.last_name")
