@@ -127,7 +127,7 @@ class Event < ApplicationRecord
   # a single audit on the event, so the cost doesn't grow with the guest list.
   def update_guests(user_ids)
     ids = user_ids.reject(&:blank?).map(&:to_i).uniq
-    wanted = User.where(id: ids).ids - expected_user_ids
+    wanted = eligible_guests.where(id: ids).ids
     current = event_guests.pluck(:member_id)
     added = wanted - current
     removed = current - wanted
@@ -147,16 +147,22 @@ class Event < ApplicationRecord
     end
   end
 
-  # Members who could be added as guests: anyone who has ever held an
-  # assignment, active or not, except those expected at the event.
+  # Who can be a guest at this event: anyone who has ever held an assignment,
+  # active or not, except those expected at it. The guest search and
+  # update_guests both use this, so a save can't add anyone the search
+  # wouldn't offer.
+  def eligible_guests
+    User.where(id: Assignment.select(:member_id)).where.not(id: expected_user_ids)
+  end
+
+  # Eligible guests whose last name starts with the query.
   def guest_candidates(query)
     term = query.to_s.strip
     return User.none if term.length < 2
 
     pattern = "#{User.sanitize_sql_like(term)}%"
-    User.where("members.last_name LIKE ?", pattern)
-      .where(id: Assignment.select(:member_id))
-      .where.not(id: expected_user_ids)
+    eligible_guests
+      .where("members.last_name LIKE ?", pattern)
       .joins(:rank)
       .preload(:rank, :discharges, active_assignments: :unit)
       .order("ranks.order DESC", "members.last_name")
