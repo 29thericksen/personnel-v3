@@ -76,7 +76,7 @@ class EventTest < ActiveSupport::TestCase
 
   test "update_guests adds and removes guests" do
     event = create(:event)
-    kept, removed, added = create_list(:user, 3)
+    kept, removed, added = Array.new(3) { create_member }
     create(:event_guest, event: event, user: kept)
     create(:event_guest, event: event, user: removed)
 
@@ -89,16 +89,28 @@ class EventTest < ActiveSupport::TestCase
     unit = create(:unit)
     event = create(:event, unit: unit)
     expected_user = create(:assignment, unit: unit).user
-    guest = create(:user)
+    guest = create_member
 
     event.update_guests([expected_user.id, guest.id, guest.id, User.maximum(:id) + 1000].map(&:to_s))
 
     assert_equal [guest.id], event.guests.reload.map(&:id)
   end
 
+  test "update_guests only adds members guest_candidates would offer" do
+    event = create(:event)
+    former_member = create(:user, last_name: "Harper")
+    create(:assignment, user: former_member, start_date: 1.year.ago, end_date: 1.month.ago)
+    applicant = create(:user, last_name: "Harris") # never held an assignment
+
+    event.update_guests([former_member.id, applicant.id].map(&:to_s))
+
+    assert_equal [former_member.id], event.guests.reload.map(&:id)
+    assert_equal [former_member.id], event.guest_candidates("Har").map(&:id)
+  end
+
   test "update_guests records the change as one audit on the event" do
     event = create(:event)
-    kept, removed, added = create_list(:user, 3)
+    kept, removed, added = Array.new(3) { create_member }
     create(:event_guest, event: event, user: kept)
     create(:event_guest, event: event, user: removed)
 
@@ -114,7 +126,7 @@ class EventTest < ActiveSupport::TestCase
 
   test "update_guests writes nothing when the guest list hasn't changed" do
     event = create(:event)
-    guest = create(:user)
+    guest = create_member
     create(:event_guest, event: event, user: guest)
 
     assert_no_difference(-> { event.audits.count }) do
@@ -126,7 +138,7 @@ class EventTest < ActiveSupport::TestCase
 
   test "update_guests adds any number of guests with a single insert" do
     event = create(:event)
-    guests = create_list(:user, 15)
+    guests = Array.new(15) { create_member }
 
     assert_queries_match(/INSERT INTO `event_guests`/, count: 1) do
       event.update_guests(guests.map { |guest| guest.id.to_s })
@@ -195,5 +207,12 @@ class EventTest < ActiveSupport::TestCase
       create_list(:attendance_record, absent, :absent, event: event)
       event
     end
+  end
+
+  private
+
+  # Someone who has held an assignment, so is eligible to be a guest
+  def create_member
+    create(:assignment).user
   end
 end

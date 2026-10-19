@@ -313,7 +313,7 @@ class EventsControllerTest < ActionDispatch::IntegrationTest
   test "aar should save guests, skipping anyone expected at the event" do
     sign_in_as @user
     event = create(:event, unit: @unit)
-    guest = create(:user)
+    guest = create(:assignment).user # guests must have held an assignment
 
     params = {event: {user_ids: [""], guest_ids: ["", guest.id.to_s, @user.id.to_s]}}
     assert_difference("EventGuest.count", 1) do
