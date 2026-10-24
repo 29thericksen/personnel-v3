@@ -57,7 +57,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody .badge-success", text: "Attended"
     assert_select "tbody .badge-info", text: "Guest"
     assert_select ".user-attendance-filters .nav-link.active", text: /All Events\s+2/
-    assert_select ".user-attendance-filters .nav-link", text: /Unit Events\s+1/
+    assert_select ".user-attendance-filters .nav-link", text: /Assigned Events\s+1/
     assert_select ".user-attendance-filters .nav-link", text: /Guested Events\s+1/
   end
 
@@ -74,7 +74,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", 1
     assert_select "a[href=?]", event_path(record.event)
     assert_select ".badge-info", 0
-    assert_select ".user-attendance-filters .nav-link.active", text: /Unit Events/
+    assert_select ".user-attendance-filters .nav-link.active", text: /Assigned Events/
   end
 
   test "attendance guested filter shows only guested events" do

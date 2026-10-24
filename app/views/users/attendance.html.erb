@@ -26,8 +26,8 @@
 
 <ul class="nav nav-pills user-attendance-filters">
   <%# Lists every event, not just drills, and "required" covers non-mandatory
-      unit events too, hence "Events" and "Unit Events" %>
-  <% {"all" => "All Events", "required" => "Unit Events", "guested" => "Guested Events"}.each do |filter, label| %>
+      unit events too, hence "Events" and "Assigned Events" %>
+  <% {"all" => "All Events", "required" => "Assigned Events", "guested" => "Guested Events"}.each do |filter, label| %>
     <li class="nav-item">
       <%= link_to user_attendance_path(@user, filter: (filter unless filter == "all")),
             class: class_names("nav-link", active: @filter == filter) do %>
