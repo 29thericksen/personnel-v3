@@ -1,10 +1,12 @@
 # Guesting statistics across a unit's subtree, for the leaders' Guest stats
-# tab. Members are the active members of the subtree's active units; guesting
-# between sub-units counts.
+# tab. Members are the active members of the subtree's active combat units,
+# each counted once under their combat post: staff offices and training
+# platoons are left out. Guesting between sub-units counts.
 #
-# #unit_rows covers every unit with members assigned directly to it (squads,
-# plus HQ elements), with how many drills its members guested in the last 30,
-# 60 and 90 days. The guester and host rankings cover the chosen period only.
+# #unit_rows covers every combat unit with members assigned directly to it
+# (squads, plus HQ elements), with how many drills its members guested in the
+# last 30, 60 and 90 days. The guester and host rankings cover the chosen
+# period only.
 class UnitGuestStats
   PERIODS = EventGuest::COUNT_PERIODS
   RANKING_SIZE = 5
@@ -81,11 +83,16 @@ class UnitGuestStats
     tree.flat_map { |tree_unit, children| [tree_unit, *flatten_tree(children)] }
   end
 
+  # {unit_id => member_ids}. Combat units only, so a member's staff office or
+  # training platoon never adds a row or counts them twice. A member with two
+  # combat posts counts once, under the higher position.
   def member_ids_by_unit
     @member_ids_by_unit ||= Assignment.active
-      .where(unit_id: unit.subtree.active.ids)
-      .distinct
+      .joins(:position, :unit)
+      .where(unit_id: unit.subtree.active.combat.ids)
+      .order("positions.order DESC", "units.order")
       .pluck(:unit_id, :member_id)
+      .uniq(&:last)
       .group_by(&:first)
       .transform_values { |pairs| pairs.map(&:last) }
   end

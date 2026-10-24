@@ -110,6 +110,28 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
   end
 
+  test "guests counts members once, under their combat post" do
+    clerk_office = create(:unit, parent: @company, abbr: "Fin", classification: "Staff")
+    training = create(:unit, parent: @company, abbr: "TP 2608", classification: "Training")
+    create(:assignment, user: @member, unit: clerk_office) # dual-hatted: Able 1-1 + Fin
+    staff_only = create(:user)
+    create(:assignment, user: staff_only, unit: clerk_office)
+    cadet = create(:user)
+    create(:assignment, user: cadet, unit: training)
+    elsewhere = create(:unit, abbr: "Dog Co. HQ")
+    [@member, staff_only, cadet].each do |user|
+      create(:event_guest, user: user, event: create(:event, unit: elsewhere, starts_at: 5.days.ago))
+    end
+
+    sign_in_as admin_user
+    get unit_guests_url(@company)
+
+    assert_equal [%w[Able\ 1-1 1 1 1 1]], table_rows(".unit-guest-stats__by-unit"),
+      "Expected no staff office or training rows, and @member only under their squad"
+    assert_equal %w[1 1 1 1], css_select(".unit-guest-stats__by-unit tfoot td").map { |td| td.text.strip }.last(4)
+    assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
+  end
+
   test "guests counts drills only" do
     sister = create(:unit, parent: @company, abbr: "Able 1-2")
     create(:event_guest, user: @member, event: create(:event, unit: sister, starts_at: 10.days.ago))
