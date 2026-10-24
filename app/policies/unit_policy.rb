@@ -11,17 +11,15 @@ class UnitPolicy < ApplicationPolicy
     user&.member?
   end
 
-  # Members see the unit they're assigned to. Leaders also see the units
-  # they're responsible for: a squad's leadership its squad, a platoon HQ its
-  # platoon and squads, a company HQ its company. MPs and admins see every unit.
+  # Members see their unit and every unit below it: a squad member their
+  # squad, anyone in a platoon or company HQ (leaders and clerks alike)
+  # everything under it, so every link on a page they can open works. MPs and
+  # admins see every unit.
   def guests?
     return false unless user&.member?
     return true if user.has_permission?("admin") || user.has_permission?("note_view_mp")
-    return true if user.active_assignments.exists?(unit_id: record.id)
 
-    %w[note_view_sq note_view_pl note_view_co].any? do |permission|
-      user.has_permission_on_unit?(permission, record)
-    end
+    user.active_assignments.exists?(unit_id: record.path_ids)
   end
 
   def awols?

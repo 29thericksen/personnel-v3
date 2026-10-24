@@ -56,13 +56,11 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_select "nav a[href=?]", unit_guests_path(@company), count: 0
   end
 
-  test "guests is open to leaders on the units they're responsible for" do
+  test "guests is open to HQ members on every unit below their HQ" do
     squad_leader = create(:user)
-    create(:permission, abbr: "note_view_sq", unit: @squad)
-    create(:assignment, user: squad_leader, unit: @squad)
-    hq_leader = create(:user)
-    create(:permission, abbr: "note_view_co", unit: @company)
-    create(:assignment, user: hq_leader, unit: @company)
+    create(:assignment, :leader, user: squad_leader, unit: @squad)
+    company_clerk = create(:user)
+    create(:assignment, :elevated, user: company_clerk, unit: @company)
 
     sign_in_as squad_leader
     get unit_guests_url(@squad)
@@ -70,11 +68,29 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     get unit_guests_url(@company)
     assert_redirected_to root_url
 
-    sign_in_as hq_leader
+    sign_in_as company_clerk
     get unit_guests_url(@squad)
     assert_response :success
     get unit_guests_url(@company)
     assert_response :success
+  end
+
+  test "every unit linked from a Guests page opens for the viewer" do
+    sister = create(:unit, parent: @company, abbr: "Able 1-2")
+    create(:assignment, unit: sister)
+    create(:event, unit: sister, starts_at: 3.days.ago)
+    company_clerk = create(:user)
+    create(:assignment, :elevated, user: company_clerk, unit: @company)
+
+    sign_in_as company_clerk
+    get unit_guests_url(@company)
+    links = css_select("a[href^='/units/'][href$='/guests']").map { |a| a["href"] }.uniq
+
+    assert links.size >= 2, "Expected the page to link to its sub-units"
+    links.each do |href|
+      get href
+      assert_response :success, "Expected #{href} to open for a company clerk"
+    end
   end
 
   test "guests breaks down guesting by unit and ranks guesters and hosts" do

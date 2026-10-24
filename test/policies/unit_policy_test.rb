@@ -20,7 +20,7 @@ class UnitPolicyTest < ActiveSupport::TestCase
     end
   end
 
-  test "guests permits members on their own unit and leaders on the units they lead" do
+  test "guests permits members on their unit and every unit below it" do
     company = create(:unit, abbr: "Charlie Co. HQ")
     cp1 = create(:unit, abbr: "CP1 HQ", parent: company)
     cp1s1 = create(:unit, abbr: "CP1S1", parent: cp1)
@@ -28,27 +28,25 @@ class UnitPolicyTest < ActiveSupport::TestCase
     cp2 = create(:unit, abbr: "CP2 HQ", parent: company)
     other_company = create(:unit, abbr: "Dog Co. HQ")
 
-    leader_of = ->(unit, abbr) do
-      create(:permission, :leader, abbr: abbr, unit: unit)
-      create(:user).tap { |user| create(:assignment, :leader, user: user, unit: unit) }
+    assigned = ->(unit, trait = nil) do
+      create(:user).tap { |user| create(:assignment, *trait, user: user, unit: unit) }
     end
-    squad_leader = leader_of.call(cp1s1, "note_view_sq")
-    platoon_leader = leader_of.call(cp1, "note_view_pl")
-    company_leader = leader_of.call(company, "note_view_co")
-    rifleman = create(:user)
-    create(:assignment, user: rifleman, unit: cp1s1)
+    squad_leader = assigned.call(cp1s1, :leader)
+    rifleman = assigned.call(cp1s1)
+    platoon_clerk = assigned.call(cp1, :elevated) # no note_view_* abilities
+    company_leader = assigned.call(company, :leader)
 
-    assert_permit squad_leader, cp1s1, :guests
-    [cp1s2, cp1, company].each { |unit| refute_permit squad_leader, unit, :guests }
+    [squad_leader, rifleman].each do |user|
+      assert_permit user, cp1s1, :guests
+      [cp1s2, cp1, company].each { |unit| refute_permit user, unit, :guests }
+    end
 
-    [cp1, cp1s1, cp1s2].each { |unit| assert_permit platoon_leader, unit, :guests }
-    [cp2, company].each { |unit| refute_permit platoon_leader, unit, :guests }
+    [cp1, cp1s1, cp1s2].each { |unit| assert_permit platoon_clerk, unit, :guests }
+    [cp2, company].each { |unit| refute_permit platoon_clerk, unit, :guests }
 
     [company, cp1, cp1s2, cp2].each { |unit| assert_permit company_leader, unit, :guests }
     refute_permit company_leader, other_company, :guests
 
-    assert_permit rifleman, cp1s1, :guests
-    [cp1s2, cp1, company].each { |unit| refute_permit rifleman, unit, :guests }
     refute_permit nil, cp1s1, :guests
   end
 
