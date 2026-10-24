@@ -7,11 +7,15 @@ module EventsHelper
     simple_format(sanitizer.sanitize(html))
   end
 
-  # Where a guest is from: their current unit(s), or Retired / Discharged.
+  # Where a guest is from: their current combat post(s); without one, their
+  # other current post(s), such as a staff office or training platoon; with
+  # none, Retired / Discharged.
   # Expects active_assignments (with unit) and discharges to be preloaded.
   def guest_status_detail(user)
-    if user.active_assignments.any?
-      user.active_assignments.map { |assignment| assignment.unit.abbr }.uniq.join(", ")
+    assignments = user.active_assignments
+    posts = assignments.select { |assignment| assignment.unit.combat? }.presence || assignments
+    if posts.any?
+      posts.map { |assignment| assignment.unit.abbr }.uniq.join(", ")
     elsif (discharge = user.discharges.max_by(&:date))
       discharge.honorable? ? "Retired" : "Discharged"
     else

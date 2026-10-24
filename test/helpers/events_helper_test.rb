@@ -16,6 +16,20 @@ class EventsHelperTest < ActionView::TestCase
     assert_equal "Discharged", guest_status_detail(discharged)
   end
 
+  test "guest_status_detail shows combat posts only, else other current posts" do
+    dual_hatted = create(:user)
+    create(:assignment, user: dual_hatted, unit: create(:unit, abbr: "CP1S1"))
+    create(:assignment, user: dual_hatted, unit: create(:unit, abbr: "Fin", classification: "Staff"))
+    staff_only = create(:user)
+    create(:assignment, user: staff_only, unit: create(:unit, abbr: "LH", classification: "Staff"))
+    cadet = create(:user)
+    create(:assignment, user: cadet, unit: create(:unit, abbr: "TP 2608", classification: "Training"))
+
+    assert_equal "CP1S1", guest_status_detail(dual_hatted)
+    assert_equal "LH", guest_status_detail(staff_only)
+    assert_equal "TP 2608", guest_status_detail(cadet)
+  end
+
   test "safe_bbcode renders bb code as html" do
     text = %([b]Hello, world![/b])
     output = safe_bbcode(text)
