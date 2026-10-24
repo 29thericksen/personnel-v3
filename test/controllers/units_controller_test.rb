@@ -103,7 +103,7 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_equal %w[2 1 2 2], css_select(".unit-guest-stats__by-unit tfoot td").map { |td| td.text.strip }
 
     assert_equal [[@member.short_name, "2"]], table_rows(".unit-guest-stats__guesters")
-    assert_equal [%w[Able\ 1-1 1.0 1 1], %w[Able\ 1-2 0.5 1 2]], table_rows(".unit-guest-stats__hosts")
+    assert_equal [%w[Able\ 1-1 1.00 1 1], %w[Able\ 1-2 0.50 1 2]], table_rows(".unit-guest-stats__hosts")
 
     get unit_guests_url(@company, period: 30)
 
@@ -122,7 +122,7 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
 
     assert_equal [%w[Able\ 1-1 1 1 1 1]], table_rows(".unit-guest-stats__by-unit"), "Expected only the drill to count"
     assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
-    assert_equal [%w[Able\ 1-2 1.0 1 1]], table_rows(".unit-guest-stats__hosts"), "Expected only the drill as a hosted drill"
+    assert_equal [%w[Able\ 1-2 1.00 1 1]], table_rows(".unit-guest-stats__hosts"), "Expected only the drill as a hosted drill"
   end
 
   test "guests with no guesting shows empty states and every host" do
@@ -132,7 +132,17 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     get unit_guests_url(@squad)
 
     assert_equal [["No guesting in the last 90 days."]], table_rows(".unit-guest-stats__guesters")
-    assert_equal [%w[Able\ 1-1 0.0 0 1]], table_rows(".unit-guest-stats__hosts")
+    assert_equal [%w[Able\ 1-1 0.00 0 1]], table_rows(".unit-guest-stats__hosts")
+  end
+
+  test "guests shows per-drill averages to two decimal places" do
+    create(:event_guest, event: create(:event, unit: @squad, starts_at: 1.day.ago))
+    24.times { |i| create(:event, unit: @squad, starts_at: (i + 2).days.ago) }
+
+    sign_in_as @member
+    get unit_guests_url(@squad)
+
+    assert_equal [%w[Able\ 1-1 0.04 1 25]], table_rows(".unit-guest-stats__hosts")
   end
 
   test "awols groups recent awols by user" do

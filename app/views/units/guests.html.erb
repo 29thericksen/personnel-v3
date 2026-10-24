@@ -56,7 +56,7 @@
         <tr>
           <td><%= link_to host.unit.abbr, unit_guests_path(host.unit) %></td>
           <td class="<%= class_names("unit-guests__count-col", "text-muted": host.guests.zero?) %>">
-            <%= number_with_precision(host.per_drill, precision: 1) %>
+            <%= number_with_precision(host.per_drill, precision: 2) %>
           </td>
           <td class="<%= class_names("unit-guests__count-col", "text-muted": host.guests.zero?) %>"><%= host.guests %></td>
           <td class="unit-guests__count-col"><%= host.drills %></td>
