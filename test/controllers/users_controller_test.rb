@@ -56,9 +56,9 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "a[href=?]", event_path(guested)
     assert_select "tbody .badge-success", text: "Attended"
     assert_select "tbody .badge-info", text: "Guest"
-    assert_select ".user-attendance-filters .nav-link.active", text: /All Drills\s+2/
-    assert_select ".user-attendance-filters .nav-link", text: /Required Drills\s+1/
-    assert_select ".user-attendance-filters .nav-link", text: /Guested Drills\s+1/
+    assert_select ".user-attendance-filters .nav-link.active", text: /All Events\s+2/
+    assert_select ".user-attendance-filters .nav-link", text: /Unit Events\s+1/
+    assert_select ".user-attendance-filters .nav-link", text: /Guested Events\s+1/
   end
 
   test "attendance required filter leaves out guested events" do
@@ -74,7 +74,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
     assert_select "tbody tr", 1
     assert_select "a[href=?]", event_path(record.event)
     assert_select ".badge-info", 0
-    assert_select ".user-attendance-filters .nav-link.active", text: /Required Drills/
+    assert_select ".user-attendance-filters .nav-link.active", text: /Unit Events/
   end
 
   test "attendance guested filter shows only guested events" do
@@ -103,7 +103,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tbody tr", 1
-    assert_select ".user-attendance-filters .nav-link.active", text: /All Drills/
+    assert_select ".user-attendance-filters .nav-link.active", text: /All Events/
   end
 
   test "attendance guested filter with no guests shows an empty state" do
@@ -115,7 +115,7 @@ class UsersControllerTest < ActionDispatch::IntegrationTest
 
     assert_response :success
     assert_select "tbody tr", 1
-    assert_match "No drills to show.", response.body
+    assert_match "No events to show.", response.body
   end
 
   test "should get qualifications" do
