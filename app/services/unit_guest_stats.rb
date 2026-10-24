@@ -40,7 +40,7 @@ class UnitGuestStats
 
   def top_guesters
     @top_guesters ||= begin
-      counts = EventGuest.past
+      counts = EventGuest.past.at_drills
         .where(member_id: all_member_ids)
         .where(events: {starts_at: since..})
         .group(:member_id)
@@ -56,7 +56,7 @@ class UnitGuestStats
   # guests per drill
   def hosts
     @hosts ||= begin
-      events = Event.for_unit(unit.subtree).past.where(starts_at: since..)
+      events = Event.for_unit(unit.subtree).past.drills.where(starts_at: since..)
       drills = events.group(:unit_id).count
       guests = EventGuest.joins(:event).merge(events).group("events.unit_id").count
       units = Unit.where(id: drills.keys).index_by(&:id)

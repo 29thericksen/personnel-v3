@@ -110,6 +110,21 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
     assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
   end
 
+  test "guests counts drills only" do
+    sister = create(:unit, parent: @company, abbr: "Able 1-2")
+    create(:event_guest, user: @member, event: create(:event, unit: sister, starts_at: 10.days.ago))
+    ["Basic Combat Training", "Public Scrimmage", "Special Event"].each do |type|
+      create(:event_guest, user: @member, event: create(:event, unit: sister, type: type, starts_at: 5.days.ago))
+    end
+
+    sign_in_as admin_user
+    get unit_guests_url(@company)
+
+    assert_equal [%w[Able\ 1-1 1 1 1 1]], table_rows(".unit-guest-stats__by-unit"), "Expected only the drill to count"
+    assert_equal [[@member.short_name, "1"]], table_rows(".unit-guest-stats__guesters")
+    assert_equal [%w[Able\ 1-2 1.0 1 1]], table_rows(".unit-guest-stats__hosts"), "Expected only the drill as a hosted drill"
+  end
+
   test "guests with no guesting shows empty states and every host" do
     create(:event, unit: @squad, starts_at: 5.days.ago)
 
@@ -230,6 +245,14 @@ class UnitsControllerTest < ActionDispatch::IntegrationTest
   end
 
   private
+
+  def admin_user
+    create(:user).tap do |user|
+      admin_unit = create(:unit, abbr: "S1")
+      create(:permission, abbr: "admin", unit: admin_unit)
+      create(:assignment, user: user, unit: admin_unit)
+    end
+  end
 
   def table_rows(table_selector)
     css_select("#{table_selector} tbody tr").map do |tr|

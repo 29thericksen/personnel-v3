@@ -74,6 +74,16 @@ class EventTest < ActiveSupport::TestCase
     assert_equal 3, expected_users.size
   end
 
+  test "drills are the four drill types, mandatory or not" do
+    drills = Event::DRILL_TYPES.map { |type| create(:event, type: type) }
+    optional_drill = create(:event, type: "Battalion Drills", mandatory: false)
+    others = ["Basic Combat Training", "Public Scrimmage", "Special Event"].map { |type| create(:event, type: type, mandatory: true) }
+
+    assert_equal (drills + [optional_drill]).map(&:id).sort, Event.drills.ids.sort
+    assert optional_drill.drill?
+    others.each { |event| refute event.drill?, "#{event.type} shouldn't count as a drill" }
+  end
+
   test "update_guests adds and removes guests" do
     event = create(:event)
     kept, removed, added = Array.new(3) { create_member }

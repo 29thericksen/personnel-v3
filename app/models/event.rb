@@ -34,6 +34,16 @@ class Event < ApplicationRecord
     "Public Scrimmage", "Special Event"]
   validates :type, presence: true, inclusion: {in: TYPES}
 
+  # What counts as a drill: the four unit drill types, mandatory or not.
+  # Basic Combat Training, Public Scrimmages and Special Events are events,
+  # not drills.
+  DRILL_TYPES = ["Squad Drills", "Platoon Drills", "Company Drills", "Battalion Drills"].freeze
+  scope :drills, -> { where(type: DRILL_TYPES) }
+
+  def drill?
+    DRILL_TYPES.include?(type)
+  end
+
   TIMEZONES = [
     "Pacific Time (US & Canada)",
     "Eastern Time (US & Canada)",
